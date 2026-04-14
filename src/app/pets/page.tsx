@@ -5,7 +5,7 @@ import { PetCard, PetCardSkeleton } from "@/components/pet/pet-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, PawPrint } from "lucide-react";
+import { Search, Filter, PawPrint, ChevronRight } from "lucide-react";
 
 interface Pet {
   id: string;
@@ -39,7 +39,7 @@ const sizeOptions = [
 ];
 
 const genderOptions = [
-  { value: "", label: "所有性别" },
+  { value: "", label: "全部" },
   { value: "male", label: "♂ 公" },
   { value: "female", label: "♀ 母" },
 ];
@@ -51,26 +51,18 @@ export default function PetsPage() {
   const [species, setSpecies] = useState("");
   const [size, setSize] = useState("");
   const [gender, setGender] = useState("");
-  const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
-    fetchPets(true);
-  }, [species, size, gender]);
+    fetchPets();
+  }, [species]);
 
-  const fetchPets = async (reset = false) => {
-    if (reset) {
-      setPage(1);
-      setLoading(true);
-    } else {
-      setLoading(true);
-    }
-
+  const fetchPets = async () => {
+    setLoading(true);
     try {
       const params = new URLSearchParams({
         status: "available",
-        page: reset ? "1" : page.toString(),
+        page: "1",
         limit: "12",
       });
       if (species) params.append("species", species);
@@ -79,13 +71,8 @@ export default function PetsPage() {
       const data = await response.json();
 
       if (data.success) {
-        if (reset) {
-          setPets(data.pets || []);
-        } else {
-          setPets((prev) => [...prev, ...(data.pets || [])]);
-        }
+        setPets(data.pets || []);
         setTotal(data.total || 0);
-        setHasMore((data.pets || []).length === 12);
       }
     } catch (error) {
       console.error("Failed to fetch pets:", error);
@@ -95,9 +82,8 @@ export default function PetsPage() {
   };
 
   const handleSearch = () => {
-    // 简单的客户端搜索过滤
     if (!searchQuery.trim()) {
-      fetchPets(true);
+      fetchPets();
       return;
     }
 
@@ -112,43 +98,47 @@ export default function PetsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-primary-500 to-primary-600 py-12">
+    <div className="min-h-screen bg-gradient-to-b from-orange-50/50 to-background">
+      {/* Header - 更清晰的颜色对比 */}
+      <div className="bg-gradient-to-br from-orange-500 via-orange-400 to-amber-400 py-10">
         <div className="container mx-auto px-4">
           <div className="text-center text-white">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <PawPrint className="w-8 h-8" />
-              <h1 className="text-4xl font-bold">寻找你的伙伴</h1>
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <span className="text-4xl">🐾</span>
+              <h1 className="text-3xl md:text-4xl font-bold">寻找你的伙伴</h1>
             </div>
-            <p className="text-primary-100 max-w-2xl mx-auto">
+            <p className="text-orange-100 max-w-xl mx-auto leading-relaxed">
               在这里，你会发现许多等待新家的可爱宠物。每一个都有自己独特的故事和性格，总有一个会打动你的心。
             </p>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex flex-col lg:flex-row gap-6">
           {/* Filters Sidebar */}
           <aside className="lg:w-64 flex-shrink-0">
-            <div className="sticky top-24 space-y-6">
+            <div className="sticky top-24 space-y-5">
               {/* Search */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">搜索</label>
+                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Search className="w-4 h-4" />
+                  搜索
+                </label>
                 <div className="flex gap-2">
                   <Input
                     placeholder="搜索宠物..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    className="border-orange-200 focus:border-orange-400"
                   />
                 </div>
               </div>
 
               {/* Species */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                   <Filter className="w-4 h-4" />
                   宠物种类
                 </label>
@@ -156,8 +146,12 @@ export default function PetsPage() {
                   {speciesOptions.map((option) => (
                     <Button
                       key={option.value}
-                      variant={species === option.value ? "secondary" : "ghost"}
-                      className="w-full justify-start"
+                      variant={species === option.value ? "default" : "ghost"}
+                      className={`w-full justify-start text-sm ${
+                        species === option.value 
+                          ? "bg-orange-500 hover:bg-orange-600 text-white" 
+                          : "text-gray-600 hover:bg-orange-50"
+                      }`}
                       onClick={() => setSpecies(option.value)}
                     >
                       {option.label}
@@ -168,14 +162,16 @@ export default function PetsPage() {
 
               {/* Size */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">体型</label>
+                <label className="text-sm font-semibold text-gray-700">体型</label>
                 <div className="flex flex-wrap gap-2">
                   {sizeOptions.map((option) => (
                     <Badge
                       key={option.value}
                       variant={size === option.value ? "default" : "outline"}
-                      className={`cursor-pointer ${
-                        size === option.value ? "bg-primary-500" : ""
+                      className={`cursor-pointer px-3 py-1 ${
+                        size === option.value 
+                          ? "bg-orange-500 text-white border-orange-500" 
+                          : "border-orange-200 text-gray-600 hover:border-orange-400"
                       }`}
                       onClick={() => setSize(option.value)}
                     >
@@ -187,14 +183,16 @@ export default function PetsPage() {
 
               {/* Gender */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">性别</label>
-                <div className="flex flex-wrap gap-2">
+                <label className="text-sm font-semibold text-gray-700">性别</label>
+                <div className="flex gap-2">
                   {genderOptions.map((option) => (
                     <Badge
                       key={option.value}
                       variant={gender === option.value ? "default" : "outline"}
-                      className={`cursor-pointer ${
-                        gender === option.value ? "bg-primary-500" : ""
+                      className={`cursor-pointer px-3 py-1 ${
+                        gender === option.value 
+                          ? "bg-orange-500 text-white border-orange-500" 
+                          : "border-orange-200 text-gray-600 hover:border-orange-400"
                       }`}
                       onClick={() => setGender(option.value)}
                     >
@@ -205,9 +203,9 @@ export default function PetsPage() {
               </div>
 
               {/* Results Count */}
-              <div className="pt-4 border-t border-border/50">
-                <p className="text-sm text-muted-foreground">
-                  共找到 <span className="font-semibold text-foreground">{total}</span> 只宠物
+              <div className="pt-4 border-t border-orange-100">
+                <p className="text-sm text-gray-500">
+                  共找到 <span className="font-bold text-orange-600">{total}</span> 只宠物
                 </p>
               </div>
             </div>
@@ -215,53 +213,42 @@ export default function PetsPage() {
 
           {/* Pet Grid */}
           <div className="flex-1">
+            {/* 提示文字 */}
+            <div className="mb-4 flex items-center gap-2 text-sm text-gray-500">
+              <PawPrint className="w-4 h-4 text-orange-400" />
+              <span>点击卡片查看详情，开始你的领养之旅</span>
+            </div>
+
             {loading && pets.length === 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <PetCardSkeleton key={i} />
                 ))}
               </div>
             ) : pets.length > 0 ? (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {pets.map((pet) => (
-                    <PetCard key={pet.id} {...pet} />
-                  ))}
-                </div>
-
-                {/* Load More */}
-                {hasMore && (
-                  <div className="mt-8 text-center">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setPage((p) => p + 1);
-                        fetchPets();
-                      }}
-                      disabled={loading}
-                    >
-                      {loading ? "加载中..." : "加载更多"}
-                    </Button>
-                  </div>
-                )}
-              </>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                {pets.map((pet) => (
+                  <PetCard key={pet.id} {...pet} />
+                ))}
+              </div>
             ) : (
-              <div className="text-center py-16">
-                <div className="text-6xl mb-4">🐾</div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">
+              <div className="text-center py-16 bg-white rounded-2xl border border-orange-100">
+                <div className="text-5xl mb-3">🐾</div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-1">
                   暂无符合条件的宠物
                 </h3>
-                <p className="text-muted-foreground mb-4">
+                <p className="text-gray-500 mb-4">
                   试试调整筛选条件，或看看其他可爱的宠物吧
                 </p>
                 <Button
                   variant="outline"
+                  className="border-orange-300 text-orange-600 hover:bg-orange-50"
                   onClick={() => {
                     setSpecies("");
                     setSize("");
                     setGender("");
                     setSearchQuery("");
-                    fetchPets(true);
+                    fetchPets();
                   }}
                 >
                   清除筛选
