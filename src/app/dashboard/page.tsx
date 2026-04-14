@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, Gift, Video, Settings, Bell, LogOut, PawPrint, Calendar } from "lucide-react";
+import { Heart, Gift, Video, Settings, Bell, LogOut, PawPrint, Calendar, ChevronRight, FileText, CheckCircle, XCircle, Clock, Shield } from "lucide-react";
 
 interface Adoption {
   id: string;
@@ -60,6 +60,8 @@ export default function DashboardPage() {
     role: "adopter",
     avatar_url: "",
     adopter_status: "approved",
+    phone: "138****8888",
+    member_since: "2024-01-01",
   };
 
   const tabs = [
@@ -71,28 +73,46 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-primary-500 to-primary-600 py-12">
+    <div className="min-h-screen bg-gradient-to-b from-orange-50/50 to-background">
+      {/* Header - 更清晰的配色 */}
+      <div className="bg-gradient-to-r from-orange-500 to-amber-500 py-10 shadow-lg">
         <div className="container mx-auto px-4">
           <div className="flex items-center gap-6">
-            <Avatar className="w-24 h-24 border-4 border-white">
+            <Avatar className="w-24 h-24 border-4 border-white shadow-md">
               <AvatarImage src={user.avatar_url} />
-              <AvatarFallback className="bg-primary-200 text-primary-700 text-2xl">
+              <AvatarFallback className="bg-white text-orange-600 text-2xl font-bold">
                 {user.name?.[0] || "U"}
               </AvatarFallback>
             </Avatar>
-            <div className="text-white">
-              <h1 className="text-3xl font-bold mb-2">{user.name}</h1>
-              <p className="text-primary-100">{user.email}</p>
+            <div>
+              {/* 用户名 - 白色，高对比度 */}
+              <h1 className="text-3xl font-bold text-white mb-1">{user.name}</h1>
+              {/* 邮箱 - 浅橙色背景上的白色文字 */}
+              <p className="text-white/90 text-sm bg-white/20 px-3 py-1 rounded-full inline-block mb-2">
+                {user.email}
+              </p>
               <div className="flex gap-2 mt-2">
-                <Badge className="bg-white/20 text-white">
+                <Badge className="bg-white/25 text-white border-0 backdrop-blur-sm">
                   {user.role === "adopter" ? "已认证领养人" : "普通用户"}
                 </Badge>
                 {user.adopter_status === "approved" && (
-                  <Badge className="bg-green-500 text-white">审核通过</Badge>
+                  <Badge className="bg-green-500 text-white border-0">
+                    审核通过
+                  </Badge>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* 个人信息补充 - 更清晰 */}
+          <div className="mt-6 flex flex-wrap gap-4">
+            <div className="bg-white/15 backdrop-blur-sm rounded-lg px-4 py-2 text-white">
+              <span className="text-white/70 text-sm">手机号：</span>
+              <span className="font-medium">{user.phone}</span>
+            </div>
+            <div className="bg-white/15 backdrop-blur-sm rounded-lg px-4 py-2 text-white">
+              <span className="text-white/70 text-sm">注册时间：</span>
+              <span className="font-medium">{user.member_since}</span>
             </div>
           </div>
         </div>
@@ -102,21 +122,21 @@ export default function DashboardPage() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar */}
           <aside className="lg:w-64 flex-shrink-0">
-            <Card className="sticky top-24">
+            <Card className="sticky top-24 shadow-md">
               <CardContent className="p-4">
                 <nav className="space-y-1">
                   {tabs.map((tab) => (
                     <Link key={tab.value} href={`#${tab.value}`}>
                       <Button
                         variant="ghost"
-                        className="w-full justify-start gap-3"
+                        className="w-full justify-start gap-3 text-gray-700 hover:bg-orange-50 hover:text-orange-600"
                       >
                         <tab.icon className="w-5 h-5" />
                         {tab.label}
                       </Button>
                     </Link>
                   ))}
-                  <Button variant="ghost" className="w-full justify-start gap-3 text-red-500">
+                  <Button variant="ghost" className="w-full justify-start gap-3 text-red-500 hover:bg-red-50 hover:text-red-600">
                     <LogOut className="w-5 h-5" />
                     退出登录
                   </Button>
@@ -129,51 +149,56 @@ export default function DashboardPage() {
           <div className="flex-1 space-y-8">
             {/* Overview */}
             <section id="overview">
-              <h2 className="text-2xl font-bold text-foreground mb-4">概览</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <PawPrint className="w-6 h-6 text-orange-500" />
+                概览
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
+                <Card className="hover:shadow-lg transition-shadow border-orange-100">
                   <CardContent className="p-6 text-center">
-                    <Heart className="w-8 h-8 mx-auto mb-2 text-primary-500" />
-                    <div className="text-3xl font-bold text-foreground">
+                    <Heart className="w-8 h-8 mx-auto mb-2 text-orange-500" />
+                    <div className="text-3xl font-bold text-gray-800">
                       {mockAdoptions.length}
                     </div>
-                    <p className="text-muted-foreground">我的领养</p>
+                    <p className="text-gray-500">我的领养</p>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="hover:shadow-lg transition-shadow border-orange-100">
                   <CardContent className="p-6 text-center">
-                    <Gift className="w-8 h-8 mx-auto mb-2 text-accent-500" />
-                    <div className="text-3xl font-bold text-foreground">
+                    <Gift className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
+                    <div className="text-3xl font-bold text-gray-800">
                       {mockDonations.length}
                     </div>
-                    <p className="text-muted-foreground">我的捐赠</p>
+                    <p className="text-gray-500">我的捐赠</p>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="hover:shadow-lg transition-shadow border-orange-100">
                   <CardContent className="p-6 text-center">
                     <Video className="w-8 h-8 mx-auto mb-2 text-purple-500" />
-                    <div className="text-3xl font-bold text-foreground">
+                    <div className="text-3xl font-bold text-gray-800">
                       {mockVideos.length}
                     </div>
-                    <p className="text-muted-foreground">已上传视频</p>
+                    <p className="text-gray-500">已上传视频</p>
                   </CardContent>
                 </Card>
               </div>
 
               {/* Next Video Reminder */}
-              <Card className="mt-6 bg-yellow-50 border-yellow-200">
+              <Card className="mt-6 bg-amber-50 border-amber-200 shadow-sm">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center">
-                      <Bell className="w-6 h-6 text-yellow-600" />
+                    <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                      <Bell className="w-6 h-6 text-amber-600" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-foreground">视频上传提醒</h3>
-                      <p className="text-sm text-muted-foreground">
+                      <h3 className="font-semibold text-gray-800">视频上传提醒</h3>
+                      <p className="text-sm text-gray-600">
                         距离下次上传宠物近况视频还有 5 天
                       </p>
                     </div>
-                    <Button>立即上传</Button>
+                    <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+                      立即上传
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -181,10 +206,10 @@ export default function DashboardPage() {
 
             {/* Adoptions */}
             <section id="adoptions">
-              <Card>
+              <Card className="border-orange-100 shadow-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Heart className="w-5 h-5 text-primary-500" />
+                  <CardTitle className="flex items-center gap-2 text-gray-800">
+                    <Heart className="w-5 h-5 text-orange-500" />
                     我的领养
                   </CardTitle>
                 </CardHeader>
@@ -194,42 +219,31 @@ export default function DashboardPage() {
                       {mockAdoptions.map((adoption) => (
                         <div
                           key={adoption.id}
-                          className="flex items-center gap-4 p-4 rounded-lg bg-muted"
+                          className="flex items-center gap-4 p-4 rounded-lg bg-orange-50 border border-orange-100 hover:shadow-md transition-shadow cursor-pointer"
                         >
-                          <div className="w-16 h-16 rounded-lg bg-primary-100 flex items-center justify-center">
+                          <div className="w-16 h-16 rounded-lg bg-orange-100 flex items-center justify-center text-3xl">
                             🐾
                           </div>
                           <div className="flex-1">
-                            <h4 className="font-semibold text-foreground">
-                              {adoption.pet.name}
-                            </h4>
-                            <p className="text-sm text-muted-foreground">
-                              领养日期: {adoption.adoption_date}
+                            <h4 className="font-semibold text-gray-800">{adoption.pet.name}</h4>
+                            <p className="text-sm text-gray-500">
+                              领养日期：{adoption.adoption_date}
                             </p>
+                            <Badge className="mt-1 bg-green-100 text-green-700 border-0">
+                              领养成功
+                            </Badge>
                           </div>
-                          <Badge
-                            className={
-                              adoption.status === "active"
-                                ? "bg-green-500 text-white"
-                                : "bg-gray-500 text-white"
-                            }
-                          >
-                            {adoption.status === "active" ? "进行中" : "已结束"}
-                          </Badge>
+                          <ChevronRight className="w-5 h-5 text-gray-400" />
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8">
-                      <div className="text-5xl mb-4">🐾</div>
-                      <h3 className="font-semibold text-foreground mb-2">暂无领养记录</h3>
-                      <p className="text-muted-foreground mb-4">
-                        快去领养一只可爱的宠物吧
-                      </p>
+                    <div className="text-center py-8 text-gray-500">
+                      <div className="text-4xl mb-2">🐾</div>
+                      <p>暂无领养记录</p>
                       <Link href="/pets">
-                        <Button>
-                          <PawPrint className="w-4 h-4 mr-2" />
-                          浏览宠物
+                        <Button variant="outline" className="mt-4 border-orange-200 text-orange-600 hover:bg-orange-50">
+                          去领养宠物
                         </Button>
                       </Link>
                     </div>
@@ -240,10 +254,10 @@ export default function DashboardPage() {
 
             {/* Donations */}
             <section id="donations">
-              <Card>
+              <Card className="border-orange-100 shadow-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Gift className="w-5 h-5 text-accent-500" />
+                  <CardTitle className="flex items-center gap-2 text-gray-800">
+                    <Gift className="w-5 h-5 text-emerald-500" />
                     我的捐赠
                   </CardTitle>
                 </CardHeader>
@@ -253,40 +267,32 @@ export default function DashboardPage() {
                       {mockDonations.map((donation) => (
                         <div
                           key={donation.id}
-                          className="flex items-center gap-4 p-4 rounded-lg bg-muted"
+                          className="flex items-center justify-between p-4 rounded-lg bg-emerald-50 border border-emerald-100"
                         >
-                          <div className="w-12 h-12 rounded-full bg-accent-100 flex items-center justify-center">
-                            {donation.type === "money" ? (
-                              <Gift className="w-6 h-6 text-accent-600" />
-                            ) : (
-                              <Gift className="w-6 h-6 text-accent-600" />
-                            )}
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                              <Gift className="w-5 h-5 text-emerald-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-800">
+                                {donation.type === "money" ? "资金捐赠" : "物资捐赠"}
+                              </p>
+                              <p className="text-sm text-gray-500">{donation.created_at}</p>
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-foreground">
-                              {donation.type === "money"
-                                ? `捐赠 ¥${donation.amount}`
-                                : "物资捐赠"}
-                            </h4>
-                            <p className="text-sm text-muted-foreground">
-                              {donation.created_at}
-                            </p>
-                          </div>
-                          <Badge className="bg-green-500 text-white">已完成</Badge>
+                          {donation.type === "money" && (
+                            <span className="font-bold text-emerald-600">¥{donation.amount}</span>
+                          )}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8">
-                      <div className="text-5xl mb-4">🎁</div>
-                      <h3 className="font-semibold text-foreground mb-2">暂无捐赠记录</h3>
-                      <p className="text-muted-foreground mb-4">
-                        感谢您的每一份爱心
-                      </p>
+                    <div className="text-center py-8 text-gray-500">
+                      <div className="text-4xl mb-2">🎁</div>
+                      <p>暂无捐赠记录</p>
                       <Link href="/donate">
-                        <Button variant="outline">
-                          <Gift className="w-4 h-4 mr-2" />
-                          我要捐赠
+                        <Button variant="outline" className="mt-4 border-emerald-200 text-emerald-600 hover:bg-emerald-50">
+                          去捐赠
                         </Button>
                       </Link>
                     </div>
@@ -297,9 +303,9 @@ export default function DashboardPage() {
 
             {/* Videos */}
             <section id="videos">
-              <Card>
+              <Card className="border-orange-100 shadow-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-gray-800">
                     <Video className="w-5 h-5 text-purple-500" />
                     宠物视频
                   </CardTitle>
@@ -310,40 +316,32 @@ export default function DashboardPage() {
                       {mockVideos.map((video) => (
                         <div
                           key={video.id}
-                          className="flex items-center gap-4 p-4 rounded-lg bg-muted"
+                          className="flex items-center justify-between p-4 rounded-lg bg-purple-50 border border-purple-100"
                         >
-                          <div className="w-24 h-16 rounded bg-purple-100 flex items-center justify-center">
-                            <Video className="w-8 h-8 text-purple-400" />
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                              <Video className="w-5 h-5 text-purple-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-800">{video.pet_name} 的近况</p>
+                              <p className="text-sm text-gray-500">{video.uploaded_at}</p>
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-foreground">
-                              {video.pet_name} - 近况视频
-                            </h4>
-                            <p className="text-sm text-muted-foreground">
-                              上传于 {video.uploaded_at}
-                            </p>
-                          </div>
-                          <Badge
-                            className={
-                              video.status === "approved"
-                                ? "bg-green-500 text-white"
-                                : "bg-yellow-500 text-white"
-                            }
-                          >
+                          <Badge className={
+                            video.status === "approved" 
+                              ? "bg-green-100 text-green-700 border-0" 
+                              : "bg-yellow-100 text-yellow-700 border-0"
+                          }>
                             {video.status === "approved" ? "已审核" : "待审核"}
                           </Badge>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8">
-                      <div className="text-5xl mb-4">📹</div>
-                      <h3 className="font-semibold text-foreground mb-2">暂无视频记录</h3>
-                      <p className="text-muted-foreground mb-4">
-                        上传宠物近况视频，让我们一起守护它们的成长
-                      </p>
-                      <Button>
-                        <Video className="w-4 h-4 mr-2" />
+                    <div className="text-center py-8 text-gray-500">
+                      <div className="text-4xl mb-2">📹</div>
+                      <p>暂无视频记录</p>
+                      <Button variant="outline" className="mt-4 border-purple-200 text-purple-600 hover:bg-purple-50">
                         上传视频
                       </Button>
                     </div>
@@ -354,41 +352,35 @@ export default function DashboardPage() {
 
             {/* Settings */}
             <section id="settings">
-              <Card>
+              <Card className="border-orange-100 shadow-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-gray-800">
                     <Settings className="w-5 h-5 text-gray-500" />
-                    个人设置
+                    账户设置
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">
-                        姓名
-                      </label>
-                      <p className="text-muted-foreground">{user.name}</p>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 border border-gray-100 hover:shadow-sm transition-shadow cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-5 h-5 text-gray-500" />
+                      <span className="text-gray-700">个人信息</span>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">
-                        邮箱
-                      </label>
-                      <p className="text-muted-foreground">{user.email}</p>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">
-                        手机号
-                      </label>
-                      <p className="text-muted-foreground">138****8888</p>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">
-                        地址
-                      </label>
-                      <p className="text-muted-foreground">北京市朝阳区</p>
-                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
                   </div>
-                  <Button>编辑资料</Button>
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 border border-gray-100 hover:shadow-sm transition-shadow cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <Bell className="w-5 h-5 text-gray-500" />
+                      <span className="text-gray-700">通知设置</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 border border-gray-100 hover:shadow-sm transition-shadow cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <Shield className="w-5 h-5 text-gray-500" />
+                      <span className="text-gray-700">隐私设置</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </div>
                 </CardContent>
               </Card>
             </section>

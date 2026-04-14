@@ -42,6 +42,12 @@ import {
   TrendingUp,
   TrendingDown,
   BarChart3,
+  LogOut,
+  Bell,
+  DollarSign,
+  Package,
+  Clock,
+  UserCheck,
 } from "lucide-react";
 
 interface Pet {
@@ -82,6 +88,7 @@ interface StatCard {
   change: string;
   icon: React.ElementType;
   trend: "up" | "down";
+  color: string;
 }
 
 export default function AdminPage() {
@@ -129,14 +136,13 @@ export default function AdminPage() {
   }, []);
 
   const stats: StatCard[] = [
-    { title: "总宠物数", value: "156", change: "+12", icon: PawPrint, trend: "up" },
-    { title: "待审核申请", value: "8", change: "+3", icon: Heart, trend: "up" },
-    { title: "本月领养", value: "23", change: "+5", icon: Users, trend: "up" },
-    { title: "收到捐赠", value: "¥12,580", change: "-8%", icon: Gift, trend: "down" },
+    { title: "总宠物数", value: "156", change: "+12", icon: PawPrint, trend: "up", color: "bg-orange-100 text-orange-600" },
+    { title: "待审核申请", value: "8", change: "+3", icon: Heart, trend: "up", color: "bg-rose-100 text-rose-600" },
+    { title: "本月领养", value: "23", change: "+5", icon: Users, trend: "up", color: "bg-emerald-100 text-emerald-600" },
+    { title: "收到捐赠", value: "¥12,580", change: "-8%", icon: Gift, trend: "down", color: "bg-amber-100 text-amber-600" },
   ];
 
   const handleReviewApplication = async (id: string, status: "approved" | "rejected") => {
-    // 模拟审核
     setApplications((prev) =>
       prev.map((app) =>
         app.id === id ? { ...app, status } : app
@@ -146,7 +152,6 @@ export default function AdminPage() {
   };
 
   const handleReviewVideo = async (id: string, status: "approved" | "rejected") => {
-    // 模拟审核
     setVideos((prev) =>
       prev.map((video) =>
         video.id === id ? { ...video, status } : video
@@ -155,25 +160,31 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-gray-800 to-gray-900 py-6">
+    <div className="min-h-screen bg-gradient-to-b from-orange-50/50 to-background">
+      {/* Header - 温暖配色 */}
+      <div className="bg-gradient-to-r from-orange-600 to-amber-600 py-6 shadow-lg">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-primary-500 flex items-center justify-center">
-                <Settings className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Settings className="w-7 h-7 text-white" />
               </div>
-              <div className="text-white">
-                <h1 className="text-xl font-bold">管理后台</h1>
-                <p className="text-sm text-gray-400">PawFinder 管理系统</p>
+              <div>
+                <h1 className="text-2xl font-bold text-white">管理后台</h1>
+                <p className="text-orange-100 text-sm">PawFinder 管理系统</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <Badge className="bg-primary-500 text-white">管理员</Badge>
+              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+                <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center text-sm font-bold">
+                  A
+                </div>
+                <span className="text-sm font-medium">管理员</span>
+              </div>
               <Link href="/">
-                <Button variant="ghost" className="text-white hover:bg-white/10">
-                  返回首页
+                <Button variant="ghost" className="text-white hover:bg-white/20 gap-2">
+                  <LogOut className="w-4 h-4" />
+                  <span>返回首页</span>
                 </Button>
               </Link>
             </div>
@@ -181,131 +192,167 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <Card key={index}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{stat.title}</p>
-                    <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                    <div className="flex items-center gap-1 mt-1">
-                      {stat.trend === "up" ? (
-                        <TrendingUp className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <TrendingDown className="w-4 h-4 text-red-500" />
-                      )}
-                      <span
-                        className={`text-xs ${
-                          stat.trend === "up" ? "text-green-500" : "text-red-500"
-                        }`}
-                      >
-                        {stat.change}
-                      </span>
-                    </div>
+      {/* Quick Stats Cards */}
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: "待审核领养", count: 3, icon: Clock, color: "from-amber-400 to-orange-500", bg: "bg-amber-50" },
+            { label: "待审核视频", count: 5, icon: Video, color: "from-purple-400 to-pink-500", bg: "bg-purple-50" },
+            { label: "待审核用户", count: 2, icon: UserCheck, color: "from-blue-400 to-cyan-500", bg: "bg-blue-50" },
+            { label: "今日新增捐赠", count: 8, icon: DollarSign, color: "from-emerald-400 to-green-500", bg: "bg-emerald-50" },
+          ].map((item, i) => (
+            <Card key={i} className="border-0 shadow-md overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg ${item.bg} flex items-center justify-center`}>
+                    <item.icon className="w-5 h-5 text-gray-700" />
                   </div>
-                  <div className="w-12 h-12 rounded-lg bg-primary-100 flex items-center justify-center">
-                    <stat.icon className="w-6 h-6 text-primary-600" />
+                  <div>
+                    <p className="text-2xl font-bold text-gray-800">{item.count}</p>
+                    <p className="text-xs text-gray-500">{item.label}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
+      </div>
 
-        {/* Tabs */}
+      <div className="container mx-auto px-4 pb-8">
+        {/* Tabs - 温暖配色 */}
         <Tabs defaultValue="adoptions">
-          <TabsList className="mb-6">
-            <TabsTrigger value="overview" className="gap-2">
+          <TabsList className="mb-6 bg-white p-1 rounded-xl shadow-sm">
+            <TabsTrigger value="overview" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-lg px-4">
               <BarChart3 className="w-4 h-4" />
-              数据概览
+              <span>数据概览</span>
             </TabsTrigger>
-            <TabsTrigger value="pets" className="gap-2">
+            <TabsTrigger value="pets" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-lg px-4">
               <PawPrint className="w-4 h-4" />
-              宠物管理
+              <span>宠物管理</span>
             </TabsTrigger>
-            <TabsTrigger value="adoptions" className="gap-2">
+            <TabsTrigger value="adoptions" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-lg px-4">
               <Heart className="w-4 h-4" />
-              领养审核
+              <span>领养审核</span>
             </TabsTrigger>
-            <TabsTrigger value="videos" className="gap-2">
+            <TabsTrigger value="videos" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-lg px-4">
               <Video className="w-4 h-4" />
-              视频审查
+              <span>视频审查</span>
             </TabsTrigger>
-            <TabsTrigger value="users" className="gap-2">
+            <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-lg px-4">
               <Users className="w-4 h-4" />
-              用户管理
+              <span>用户管理</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Overview */}
           <TabsContent value="overview">
-            <Card>
-              <CardHeader>
-                <CardTitle>数据概览</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-6 bg-muted rounded-lg">
-                    <h3 className="font-semibold mb-4">本月领养趋势</h3>
-                    <div className="space-y-4">
-                      {[
-                        { day: "周一", value: 3, width: 65 },
-                        { day: "周二", value: 5, width: 78 },
-                        { day: "周三", value: 4, width: 72 },
-                        { day: "周四", value: 6, width: 85 },
-                        { day: "周五", value: 3, width: 60 },
-                        { day: "周六", value: 2, width: 55 },
-                        { day: "周日", value: 4, width: 70 },
-                      ].map((item) => (
-                        <div key={item.day} className="flex items-center gap-3">
-                          <span className="text-sm text-muted-foreground w-8">{item.day}</span>
-                          <div className="flex-1 bg-primary-100 rounded-full h-4">
-                            <div
-                              className="bg-primary-500 rounded-full h-4"
-                              style={{ width: `${item.width}%` }}
-                            />
-                          </div>
-                          <span className="text-sm font-medium">{item.value}</span>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* 统计卡片 */}
+              <Card className="border-orange-100 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-gray-800 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-orange-500" />
+                    关键指标
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    {stats.map((stat, index) => (
+                      <div key={index} className="p-4 bg-orange-50 rounded-xl border border-orange-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                          <Badge variant={stat.trend === "up" ? "default" : "destructive"} className="text-xs">
+                            {stat.change}
+                          </Badge>
                         </div>
-                      ))}
+                        <p className="text-2xl font-bold text-gray-800">{stat.value}</p>
+                        <p className="text-sm text-gray-500">{stat.title}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 本月趋势 */}
+              <Card className="border-orange-100 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-gray-800">本月领养趋势</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {[
+                      { day: "周一", value: 3, width: 65 },
+                      { day: "周二", value: 5, width: 78 },
+                      { day: "周三", value: 4, width: 72 },
+                      { day: "周四", value: 6, width: 85 },
+                      { day: "周五", value: 3, width: 60 },
+                      { day: "周六", value: 2, width: 55 },
+                      { day: "周日", value: 4, width: 70 },
+                    ].map((item) => (
+                      <div key={item.day} className="flex items-center gap-3">
+                        <span className="text-sm text-gray-500 w-8">{item.day}</span>
+                        <div className="flex-1 bg-orange-100 rounded-full h-4">
+                          <div
+                            className="bg-gradient-to-r from-orange-400 to-amber-400 rounded-full h-4"
+                            style={{ width: `${item.width}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium text-gray-700">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 待办事项 */}
+              <Card className="border-orange-100 shadow-sm lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-gray-800 flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-amber-500" />
+                    待办事项
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                        <Heart className="w-5 h-5 text-amber-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-800">3 项领养申请待审核</p>
+                        <p className="text-sm text-gray-500">需要尽快处理</p>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-purple-50 rounded-xl border border-purple-200 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                        <Video className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-800">5 个视频待审查</p>
+                        <p className="text-sm text-gray-500">领养回访视频</p>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <Package className="w-5 h-5 text-emerald-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-800">2 个捐赠待确认</p>
+                        <p className="text-sm text-gray-500">物资捐赠</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="p-6 bg-muted rounded-lg">
-                    <h3 className="font-semibold mb-4">宠物种类分布</h3>
-                    <div className="space-y-3">
-                      {[
-                        { name: "猫咪", count: 58, color: "bg-blue-500" },
-                        { name: "狗狗", count: 42, color: "bg-green-500" },
-                        { name: "兔子", count: 18, color: "bg-pink-500" },
-                        { name: "其他", count: 8, color: "bg-gray-500" },
-                      ].map((item) => (
-                        <div key={item.name} className="flex items-center gap-3">
-                          <span className="text-sm text-muted-foreground w-16">{item.name}</span>
-                          <div className="flex-1 bg-gray-200 rounded-full h-4">
-                            <div
-                              className={`${item.color} rounded-full h-4`}
-                              style={{ width: `${(item.count / 126) * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-sm font-medium w-8">{item.count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Pets */}
           <TabsContent value="pets">
-            <Card>
+            <Card className="border-orange-100 shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>宠物管理</CardTitle>
-                <Button>
+                <CardTitle className="text-gray-800">宠物列表</CardTitle>
+                <Button className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white">
                   <Plus className="w-4 h-4 mr-2" />
                   添加宠物
                 </Button>
@@ -313,33 +360,33 @@ export default function AdminPage() {
               <CardContent>
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>宠物</TableHead>
-                      <TableHead>种类</TableHead>
-                      <TableHead>品种</TableHead>
-                      <TableHead>状态</TableHead>
-                      <TableHead>创建时间</TableHead>
-                      <TableHead>操作</TableHead>
+                    <TableRow className="bg-orange-50">
+                      <TableHead className="text-gray-600 font-semibold">宠物</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">种类</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">品种</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">状态</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">创建时间</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">操作</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {pets.map((pet) => (
-                      <TableRow key={pet.id}>
+                      <TableRow key={pet.id} className="hover:bg-orange-50/50">
                         <TableCell className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-xl">
                             🐾
                           </div>
-                          <span className="font-medium">{pet.name}</span>
+                          <span className="font-medium text-gray-800">{pet.name}</span>
                         </TableCell>
-                        <TableCell>{pet.species}</TableCell>
-                        <TableCell>{pet.breed}</TableCell>
+                        <TableCell className="text-gray-600">{pet.species}</TableCell>
+                        <TableCell className="text-gray-600">{pet.breed}</TableCell>
                         <TableCell>
                           <Badge
                             className={
                               pet.status === "available"
-                                ? "bg-green-500"
+                                ? "bg-emerald-500"
                                 : pet.status === "pending"
-                                ? "bg-yellow-500"
+                                ? "bg-amber-500"
                                 : "bg-gray-500"
                             }
                           >
@@ -350,11 +397,16 @@ export default function AdminPage() {
                               : "已领养"}
                           </Badge>
                         </TableCell>
-                        <TableCell>{pet.created_at}</TableCell>
+                        <TableCell className="text-gray-500">{pet.created_at}</TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm">
-                            <Eye className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="sm" className="text-orange-600 hover:bg-orange-50">
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-gray-500 hover:bg-gray-50">
+                              <Settings className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -366,66 +418,62 @@ export default function AdminPage() {
 
           {/* Adoptions */}
           <TabsContent value="adoptions">
-            <Card>
+            <Card className="border-orange-100 shadow-sm">
               <CardHeader>
-                <CardTitle>领养申请审核</CardTitle>
+                <CardTitle className="text-gray-800">领养申请审核</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>申请人</TableHead>
-                      <TableHead>申请宠物</TableHead>
-                      <TableHead>申请理由</TableHead>
-                      <TableHead>状态</TableHead>
-                      <TableHead>申请时间</TableHead>
-                      <TableHead>操作</TableHead>
+                    <TableRow className="bg-orange-50">
+                      <TableHead className="text-gray-600 font-semibold">申请人</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">申请宠物</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">申请理由</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">状态</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">申请时间</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">操作</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {applications.map((app) => (
-                      <TableRow key={app.id}>
+                      <TableRow key={app.id} className="hover:bg-orange-50/50">
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <Avatar className="w-8 h-8">
-                              <AvatarFallback>{app.user.name?.[0] || "U"}</AvatarFallback>
+                            <Avatar className="w-8 h-8 bg-orange-100">
+                              <AvatarFallback className="text-orange-600 font-medium">{app.user.name?.[0] || "U"}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-medium">{app.user.name}</p>
-                              <p className="text-xs text-muted-foreground">{app.user.email}</p>
+                              <p className="font-medium text-gray-800">{app.user.name}</p>
+                              <p className="text-xs text-gray-500">{app.user.email}</p>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <span>🐾</span>
-                            <span>{app.pet.name}</span>
+                            <span className="text-lg">🐾</span>
+                            <span className="text-gray-700">{app.pet.name}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-xs truncate">{app.reason}</TableCell>
+                        <TableCell className="text-gray-600 max-w-xs truncate">{app.reason}</TableCell>
                         <TableCell>
                           <Badge
                             className={
                               app.status === "pending"
-                                ? "bg-yellow-500"
+                                ? "bg-amber-500"
                                 : app.status === "approved"
-                                ? "bg-green-500"
+                                ? "bg-emerald-500"
                                 : "bg-red-500"
                             }
                           >
-                            {app.status === "pending"
-                              ? "待审核"
-                              : app.status === "approved"
-                              ? "已通过"
-                              : "已拒绝"}
+                            {app.status === "pending" ? "待审核" : app.status === "approved" ? "已通过" : "已拒绝"}
                           </Badge>
                         </TableCell>
-                        <TableCell>{app.created_at}</TableCell>
+                        <TableCell className="text-gray-500">{app.created_at}</TableCell>
                         <TableCell>
-                          {app.status === "pending" && (
+                          {app.status === "pending" ? (
                             <Dialog>
                               <DialogTrigger asChild>
-                                <Button variant="outline" size="sm" onClick={() => setSelectedApplication(app)}>
+                                <Button variant="outline" size="sm" className="border-orange-200 text-orange-600 hover:bg-orange-50" onClick={() => setSelectedApplication(app)}>
                                   <FileText className="w-4 h-4 mr-2" />
                                   审核
                                 </Button>
@@ -438,34 +486,36 @@ export default function AdminPage() {
                                   </DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
-                                  <div className="p-4 bg-muted rounded-lg">
-                                    <h4 className="font-medium mb-2">申请人信息</h4>
-                                    <p>姓名: {selectedApplication?.user.name}</p>
-                                    <p>邮箱: {selectedApplication?.user.email}</p>
+                                  <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
+                                    <h4 className="font-medium text-gray-800 mb-2">申请人信息</h4>
+                                    <p className="text-gray-600">姓名: {selectedApplication?.user.name}</p>
+                                    <p className="text-gray-600">邮箱: {selectedApplication?.user.email}</p>
                                   </div>
-                                  <div className="p-4 bg-muted rounded-lg">
-                                    <h4 className="font-medium mb-2">申请理由</h4>
-                                    <p className="text-sm">{selectedApplication?.reason}</p>
+                                  <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
+                                    <h4 className="font-medium text-gray-800 mb-2">申请理由</h4>
+                                    <p className="text-sm text-gray-600">{selectedApplication?.reason}</p>
                                   </div>
                                   <div className="space-y-2">
-                                    <Label>审核备注</Label>
+                                    <Label className="text-gray-700">审核备注</Label>
                                     <Input
                                       placeholder="输入审核备注..."
                                       value={reviewNotes}
                                       onChange={(e) => setReviewNotes(e.target.value)}
+                                      className="border-orange-200 focus:border-orange-400"
                                     />
                                   </div>
                                 </div>
                                 <DialogFooter>
                                   <Button
                                     variant="outline"
+                                    className="border-red-200 text-red-600 hover:bg-red-50"
                                     onClick={() => handleReviewApplication(app.id, "rejected")}
                                   >
                                     <XCircle className="w-4 h-4 mr-2" />
                                     拒绝
                                   </Button>
                                   <Button
-                                    className="bg-green-600 hover:bg-green-700"
+                                    className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white"
                                     onClick={() => handleReviewApplication(app.id, "approved")}
                                   >
                                     <CheckCircle className="w-4 h-4 mr-2" />
@@ -474,6 +524,8 @@ export default function AdminPage() {
                                 </DialogFooter>
                               </DialogContent>
                             </Dialog>
+                          ) : (
+                            <span className="text-gray-400 text-sm">已完成</span>
                           )}
                         </TableCell>
                       </TableRow>
@@ -486,66 +538,60 @@ export default function AdminPage() {
 
           {/* Videos */}
           <TabsContent value="videos">
-            <Card>
+            <Card className="border-orange-100 shadow-sm">
               <CardHeader>
-                <CardTitle>宠物视频审查</CardTitle>
+                <CardTitle className="text-gray-800">视频审查</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>视频</TableHead>
-                      <TableHead>宠物名称</TableHead>
-                      <TableHead>描述</TableHead>
-                      <TableHead>状态</TableHead>
-                      <TableHead>上传时间</TableHead>
-                      <TableHead>操作</TableHead>
+                    <TableRow className="bg-purple-50">
+                      <TableHead className="text-gray-600 font-semibold">宠物</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">上传者</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">描述</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">状态</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">上传时间</TableHead>
+                      <TableHead className="text-gray-600 font-semibold">操作</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {videos.map((video) => (
-                      <TableRow key={video.id}>
-                        <TableCell>
-                          <div className="w-16 h-12 rounded bg-purple-100 flex items-center justify-center">
-                            <Video className="w-6 h-6 text-purple-400" />
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium">{video.pet_name}</TableCell>
-                        <TableCell className="max-w-xs truncate">{video.description}</TableCell>
+                      <TableRow key={video.id} className="hover:bg-purple-50/50">
+                        <TableCell className="text-gray-800">{video.pet_name}</TableCell>
+                        <TableCell className="text-gray-600">{video.user_id}</TableCell>
+                        <TableCell className="text-gray-600 max-w-xs truncate">{video.description}</TableCell>
                         <TableCell>
                           <Badge
                             className={
                               video.status === "pending"
-                                ? "bg-yellow-500"
+                                ? "bg-amber-500"
                                 : video.status === "approved"
-                                ? "bg-green-500"
+                                ? "bg-emerald-500"
                                 : "bg-red-500"
                             }
                           >
-                            {video.status === "pending"
-                              ? "待审核"
-                              : video.status === "approved"
-                              ? "已通过"
-                              : "已拒绝"}
+                            {video.status === "pending" ? "待审核" : video.status === "approved" ? "已通过" : "已拒绝"}
                           </Badge>
                         </TableCell>
-                        <TableCell>{video.created_at}</TableCell>
+                        <TableCell className="text-gray-500">{video.created_at}</TableCell>
                         <TableCell>
                           {video.status === "pending" && (
-                            <div className="flex gap-2">
+                            <div className="flex items-center gap-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                className="text-emerald-600 hover:bg-emerald-50"
                                 onClick={() => handleReviewVideo(video.id, "approved")}
                               >
-                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                <CheckCircle className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                className="text-red-600 hover:bg-red-50"
                                 onClick={() => handleReviewVideo(video.id, "rejected")}
                               >
-                                <XCircle className="w-4 h-4 text-red-500" />
+                                <XCircle className="w-4 h-4" />
                               </Button>
                             </div>
                           )}
@@ -560,12 +606,41 @@ export default function AdminPage() {
 
           {/* Users */}
           <TabsContent value="users">
-            <Card>
+            <Card className="border-orange-100 shadow-sm">
               <CardHeader>
-                <CardTitle>用户管理</CardTitle>
+                <CardTitle className="text-gray-800">用户管理</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">用户管理功能开发中...</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[
+                    { name: "张三", email: "zhangsan@example.com", role: "领养人", status: "已认证", avatar: "张" },
+                    { name: "李四", email: "lisi@example.com", role: "领养人", status: "待审核", avatar: "李" },
+                    { name: "王五", email: "wangwu@example.com", role: "捐赠人", status: "已认证", avatar: "王" },
+                    { name: "赵六", email: "zhaoliu@example.com", role: "捐赠人", status: "已认证", avatar: "赵" },
+                    { name: "孙七", email: "sunqi@example.com", role: "领养人", status: "待审核", avatar: "孙" },
+                    { name: "周八", email: "zhouba@example.com", role: "领养人", status: "已认证", avatar: "周" },
+                  ].map((user, i) => (
+                    <div key={i} className="p-4 bg-white rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Avatar className="w-12 h-12 bg-orange-100">
+                          <AvatarFallback className="text-orange-600 font-bold">{user.avatar}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-gray-800">{user.name}</p>
+                          <p className="text-xs text-gray-500">{user.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="border-orange-200 text-orange-600">
+                          {user.role}
+                        </Badge>
+                        <Badge className={user.status === "已认证" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}>
+                          {user.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
