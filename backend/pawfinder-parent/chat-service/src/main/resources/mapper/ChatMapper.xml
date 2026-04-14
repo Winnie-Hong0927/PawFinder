@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pawfinder.chat.mapper.ChatMapper">
+
+    <!-- ChatSession -->
+    <insert id="insertSession">
+        INSERT INTO chat_sessions (user_id, session_id, title, message_count, created_at, created_by, deleted)
+        VALUES (#{userId}, #{sessionId}, #{title}, 0, NOW(), #{createdBy}, 0)
+    </insert>
+
+    <update id="updateSession">
+        UPDATE chat_sessions
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="messageCount != null">message_count = #{messageCount},</if>
+            updated_at = NOW()
+        </set>
+        WHERE session_id = #{sessionId} AND deleted = 0
+    </update>
+
+    <select id="selectSessionById" resultType="com.pawfinder.chat.entity.ChatSession">
+        SELECT * FROM chat_sessions WHERE session_id = #{sessionId} AND deleted = 0
+    </select>
+
+    <select id="selectSessionsByUserId" resultType="com.pawfinder.chat.entity.ChatSession">
+        SELECT * FROM chat_sessions WHERE user_id = #{userId} AND deleted = 0 ORDER BY created_at DESC
+    </select>
+
+    <!-- ChatMessage -->
+    <insert id="insertMessage" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO chat_messages (user_id, session_id, role, content, model, created_at, created_by, deleted)
+        VALUES (#{userId}, #{sessionId}, #{role}, #{content}, #{model}, NOW(), #{createdBy}, 0)
+    </insert>
+
+    <select id="selectMessagesBySessionId" resultType="com.pawfinder.chat.entity.ChatMessage">
+        SELECT * FROM chat_messages WHERE session_id = #{sessionId} AND deleted = 0 ORDER BY created_at ASC
+    </select>
+
+    <select id="selectLastMessageBySessionId" resultType="com.pawfinder.chat.entity.ChatMessage">
+        SELECT * FROM chat_messages WHERE session_id = #{sessionId} AND deleted = 0 ORDER BY created_at DESC LIMIT 1
+    </select>
+
+</mapper>

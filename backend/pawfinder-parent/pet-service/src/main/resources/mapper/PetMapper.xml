@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pawfinder.pet.mapper.PetMapper">
+
+    <resultMap id="BaseResultMap" type="com.pawfinder.pet.entity.Pet">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="species" property="species"/>
+        <result column="breed" property="breed"/>
+        <result column="age" property="age"/>
+        <result column="gender" property="gender"/>
+        <result column="size" property="size"/>
+        <result column="images" property="images"/>
+        <result column="traits" property="traits"/>
+        <result column="health_status" property="healthStatus"/>
+        <result column="description" property="description"/>
+        <result column="status" property="status"/>
+        <result column="shelter_location" property="shelterLocation"/>
+        <result column="shelter_contact" property="shelterContact"/>
+        <result column="is_vaccinated" property="isVaccinated"/>
+        <result column="is_neutered" property="isNeutered"/>
+        <result column="rescue_story" property="rescueStory"/>
+        <result column="adoption_fee" property="adoptionFee"/>
+        <result column="view_count" property="viewCount"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="updated_by" property="updatedBy"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, name, species, breed, age, gender, size, images, traits, health_status,
+        description, status, shelter_location, shelter_contact, is_vaccinated, is_neutered,
+        rescue_story, adoption_fee, view_count, created_at, created_by, updated_at, updated_by, deleted
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO pets (name, species, breed, age, gender, size, images, traits, health_status,
+            description, status, shelter_location, shelter_contact, is_vaccinated, is_neutered,
+            rescue_story, adoption_fee, view_count, created_at, created_by, deleted)
+        VALUES (#{name}, #{species}, #{breed}, #{age}, #{gender}, #{size}, #{images}, #{traits},
+            #{healthStatus}, #{description}, #{status}, #{shelterLocation}, #{shelterContact},
+            #{isVaccinated}, #{isNeutered}, #{rescueStory}, #{adoptionFee}, 0, NOW(), #{createdBy}, 0)
+    </insert>
+
+    <update id="update">
+        UPDATE pets
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="species != null">species = #{species},</if>
+            <if test="breed != null">breed = #{breed},</if>
+            <if test="age != null">age = #{age},</if>
+            <if test="gender != null">gender = #{gender},</if>
+            <if test="size != null">size = #{size},</if>
+            <if test="images != null">images = #{images},</if>
+            <if test="traits != null">traits = #{traits},</if>
+            <if test="healthStatus != null">health_status = #{healthStatus},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="shelterLocation != null">shelter_location = #{shelterLocation},</if>
+            <if test="shelterContact != null">shelter_contact = #{shelterContact},</if>
+            <if test="isVaccinated != null">is_vaccinated = #{isVaccinated},</if>
+            <if test="isNeutered != null">is_neutered = #{isNeutered},</if>
+            <if test="rescueStory != null">rescue_story = #{rescueStory},</if>
+            <if test="adoptionFee != null">adoption_fee = #{adoptionFee},</if>
+            updated_at = NOW(),
+            updated_by = #{updatedBy}
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="deleteById">
+        UPDATE pets SET deleted = 1, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM pets
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="selectByStatus" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM pets
+        WHERE status = #{status} AND deleted = 0
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="selectBySpecies" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM pets
+        WHERE species = #{species} AND deleted = 0
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="selectByStatusAndSpecies" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM pets
+        WHERE status = #{status} AND species = #{species} AND deleted = 0
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="searchPets" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM pets
+        WHERE deleted = 0
+          AND (name LIKE CONCAT('%', #{keyword}, '%')
+               OR breed LIKE CONCAT('%', #{keyword}, '%')
+               OR shelter_location LIKE CONCAT('%', #{keyword}, '%')
+               OR description LIKE CONCAT('%', #{keyword}, '%'))
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="countByStatus" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM pets WHERE status = #{status} AND deleted = 0
+    </select>
+
+    <select id="countBySpecies" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM pets WHERE species = #{species} AND deleted = 0
+    </select>
+
+    <select id="countAll" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM pets WHERE deleted = 0
+    </select>
+
+    <update id="incrementViewCount">
+        UPDATE pets SET view_count = view_count + 1 WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE pets SET status = #{status}, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+</mapper>

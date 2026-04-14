@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: pawfinder-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: pawfinder
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    networks:
+      - pawfinder-net
+
+  nacos:
+    image: nacos/nacos-server:v2.2.3
+    container_name: pawfinder-nacos
+    environment:
+      MODE: standalone
+      SPRING_DATASOURCE_PLATFORM: mysql
+      MYSQL_SERVICE_HOST: mysql
+      MYSQL_SERVICE_PORT: 3306
+      MYSQL_SERVICE_USER: root
+      MYSQL_SERVICE_PASSWORD: root123
+      MYSQL_SERVICE_DB_NAME: nacos_config
+      JVM_XMS: 256m
+      JVM_XMX: 512m
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+    depends_on:
+      - mysql
+    networks:
+      - pawfinder-net
+
+  # Optional: API Gateway for local testing
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: pawfinder-gateway
+    environment:
+      NACOS_HOST: nacos
+      NACOS_PORT: 8848
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: pawfinder
+      DB_USERNAME: root
+      DB_PASSWORD: root123
+    ports:
+      - "8080:8080"
+    depends_on:
+      - nacos
+      - mysql
+    networks:
+      - pawfinder-net
+
+volumes:
+  mysql-data:
+
+networks:
+  pawfinder-net:
+    driver: bridge

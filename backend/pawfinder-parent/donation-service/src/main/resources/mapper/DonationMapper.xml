@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pawfinder.donation.mapper.DonationMapper">
+
+    <!-- DonationCampaign -->
+    <insert id="insertCampaign" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO donation_campaigns (title, description, image_url, target_amount, current_amount, status, created_at, created_by, deleted)
+        VALUES (#{title}, #{description}, #{imageUrl}, #{targetAmount}, 0, #{status}, NOW(), #{createdBy}, 0)
+    </insert>
+
+    <update id="updateCampaign">
+        UPDATE donation_campaigns
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="imageUrl != null">image_url = #{imageUrl},</if>
+            <if test="targetAmount != null">target_amount = #{targetAmount},</if>
+            <if test="currentAmount != null">current_amount = #{currentAmount},</if>
+            <if test="status != null">status = #{status},</if>
+            updated_at = NOW()
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <select id="selectCampaignById" resultType="com.pawfinder.donation.entity.DonationCampaign">
+        SELECT * FROM donation_campaigns WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="selectActiveCampaigns" resultType="com.pawfinder.donation.entity.DonationCampaign">
+        SELECT * FROM donation_campaigns WHERE status = 'active' AND deleted = 0 ORDER BY created_at DESC
+    </select>
+
+    <select id="selectAllCampaigns" resultType="com.pawfinder.donation.entity.DonationCampaign">
+        SELECT * FROM donation_campaigns WHERE deleted = 0 ORDER BY created_at DESC
+    </select>
+
+    <select id="countActiveCampaigns" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM donation_campaigns WHERE status = 'active' AND deleted = 0
+    </select>
+
+    <!-- Donation -->
+    <insert id="insertDonation" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO donations (campaign_id, user_id, amount, payment_method, payment_status, transaction_id, anonymous, message, created_at, created_by, deleted)
+        VALUES (#{campaignId}, #{userId}, #{amount}, #{paymentMethod}, #{paymentStatus}, #{transactionId}, #{anonymous}, #{message}, NOW(), #{createdBy}, 0)
+    </insert>
+
+    <update id="updateDonation">
+        UPDATE donations
+        <set>
+            <if test="paymentStatus != null">payment_status = #{paymentStatus},</if>
+            <if test="transactionId != null">transaction_id = #{transactionId},</if>
+            updated_at = NOW()
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <select id="selectDonationById" resultType="com.pawfinder.donation.entity.Donation">
+        SELECT * FROM donations WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="selectDonationsByCampaignId" resultType="com.pawfinder.donation.entity.Donation">
+        SELECT * FROM donations WHERE campaign_id = #{campaignId} AND deleted = 0 AND anonymous = 'false' ORDER BY created_at DESC
+    </select>
+
+    <select id="selectDonationsByUserId" resultType="com.pawfinder.donation.entity.Donation">
+        SELECT * FROM donations WHERE user_id = #{userId} AND deleted = 0 ORDER BY created_at DESC
+    </select>
+
+    <select id="sumDonationsByCampaignId" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(amount), 0) FROM donations WHERE campaign_id = #{campaignId} AND payment_status = 'completed' AND deleted = 0
+    </select>
+
+    <select id="countDonationsByCampaignId" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM donations WHERE campaign_id = #{campaignId} AND payment_status = 'completed' AND deleted = 0
+    </select>
+
+</mapper>

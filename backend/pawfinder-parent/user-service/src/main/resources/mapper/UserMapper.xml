@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pawfinder.user.mapper.UserMapper">
+
+    <resultMap id="BaseResultMap" type="com.pawfinder.user.entity.User">
+        <id column="id" property="id"/>
+        <result column="email" property="email"/>
+        <result column="password" property="password"/>
+        <result column="phone" property="phone"/>
+        <result column="name" property="name"/>
+        <result column="avatar_url" property="avatarUrl"/>
+        <result column="role" property="role"/>
+        <result column="adopter_status" property="adopterStatus"/>
+        <result column="id_card" property="idCard"/>
+        <result column="address" property="address"/>
+        <result column="bio" property="bio"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="updated_by" property="updatedBy"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, email, password, phone, name, avatar_url, role, adopter_status,
+        id_card, address, bio, created_at, created_by, updated_at, updated_by, deleted
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (email, password, phone, name, avatar_url, role, adopter_status, created_at, created_by, deleted)
+        VALUES (#{email}, #{password}, #{phone}, #{name}, #{avatarUrl}, #{role}, #{adopterStatus}, NOW(), #{createdBy}, 0)
+    </insert>
+
+    <update id="update">
+        UPDATE users
+        <set>
+            <if test="email != null">email = #{email},</if>
+            <if test="password != null">password = #{password},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="name != null">name = #{name},</if>
+            <if test="avatarUrl != null">avatar_url = #{avatarUrl},</if>
+            <if test="role != null">role = #{role},</if>
+            <if test="adopterStatus != null">adopter_status = #{adopterStatus},</if>
+            <if test="idCard != null">id_card = #{idCard},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="bio != null">bio = #{bio},</if>
+            updated_at = NOW(),
+            updated_by = #{updatedBy}
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="deleteById">
+        UPDATE users SET deleted = 1, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="selectByEmail" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE email = #{email} AND deleted = 0
+    </select>
+
+    <select id="selectByRole" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE role = #{role} AND deleted = 0
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="selectByAdopterStatus" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE adopter_status = #{adopterStatus} AND deleted = 0
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="count" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM users WHERE deleted = 0
+    </select>
+
+    <select id="countByRole" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM users WHERE role = #{role} AND deleted = 0
+    </select>
+
+</mapper>

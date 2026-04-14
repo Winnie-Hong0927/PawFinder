@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pawfinder.adoption.mapper.AdoptionMapper">
+
+    <!-- AdoptionApplication -->
+    <insert id="insertApplication" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO adoption_applications (user_id, pet_id, reason, id_card, living_condition, experience, status, created_at, created_by, deleted)
+        VALUES (#{userId}, #{petId}, #{reason}, #{idCard}, #{livingCondition}, #{experience}, #{status}, NOW(), #{createdBy}, 0)
+    </insert>
+
+    <update id="updateApplication">
+        UPDATE adoption_applications
+        <set>
+            <if test="reason != null">reason = #{reason},</if>
+            <if test="idCard != null">id_card = #{idCard},</if>
+            <if test="livingCondition != null">living_condition = #{livingCondition},</if>
+            <if test="experience != null">experience = #{experience},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="reviewNotes != null">review_notes = #{reviewNotes},</if>
+            <if test="reviewedBy != null">reviewed_by = #{reviewedBy},</if>
+            updated_at = NOW()
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <select id="selectApplicationById" resultType="com.pawfinder.adoption.entity.AdoptionApplication">
+        SELECT * FROM adoption_applications WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="selectApplicationsByUserId" resultType="com.pawfinder.adoption.entity.AdoptionApplication">
+        SELECT * FROM adoption_applications WHERE user_id = #{userId} AND deleted = 0 ORDER BY created_at DESC
+    </select>
+
+    <select id="selectApplicationsByStatus" resultType="com.pawfinder.adoption.entity.AdoptionApplication">
+        SELECT * FROM adoption_applications WHERE status = #{status} AND deleted = 0 ORDER BY created_at DESC
+    </select>
+
+    <select id="selectApplicationsByPetId" resultType="com.pawfinder.adoption.entity.AdoptionApplication">
+        SELECT * FROM adoption_applications WHERE pet_id = #{petId} AND deleted = 0 ORDER BY created_at DESC
+    </select>
+
+    <select id="countApplicationsByStatus" resultType="java.lang.Long">
+        SELECT COUNT(*) FROM adoption_applications WHERE status = #{status} AND deleted = 0
+    </select>
+
+    <!-- Adoption -->
+    <insert id="insertAdoption" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO adoptions (user_id, pet_id, application_id, status, notes, created_at, created_by, deleted)
+        VALUES (#{userId}, #{petId}, #{applicationId}, #{status}, #{notes}, NOW(), #{createdBy}, 0)
+    </insert>
+
+    <update id="updateAdoption">
+        UPDATE adoptions
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="notes != null">notes = #{notes},</if>
+            updated_at = NOW()
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <select id="selectAdoptionById" resultType="com.pawfinder.adoption.entity.Adoption">
+        SELECT * FROM adoptions WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="selectAdoptionsByUserId" resultType="com.pawfinder.adoption.entity.Adoption">
+        SELECT * FROM adoptions WHERE user_id = #{userId} AND deleted = 0 ORDER BY created_at DESC
+    </select>
+
+    <select id="selectActiveAdoptionByPetId" resultType="com.pawfinder.adoption.entity.Adoption">
+        SELECT * FROM adoptions WHERE pet_id = #{petId} AND status = 'active' AND deleted = 0
+    </select>
+
+    <!-- PetVideo -->
+    <insert id="insertVideo" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO pet_videos (adoption_id, user_id, pet_id, video_url, thumbnail_url, description, status, created_at, created_by, deleted)
+        VALUES (#{adoptionId}, #{userId}, #{petId}, #{videoUrl}, #{thumbnailUrl}, #{description}, #{status}, NOW(), #{createdBy}, 0)
+    </insert>
+
+    <update id="updateVideo">
+        UPDATE pet_videos
+        <set>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="reviewNotes != null">review_notes = #{reviewNotes},</if>
+            <if test="reviewedBy != null">reviewed_by = #{reviewedBy},</if>
+            <if test="nextReminderDate != null">next_reminder_date = #{nextReminderDate},</if>
+            updated_at = NOW()
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <select id="selectVideoById" resultType="com.pawfinder.adoption.entity.PetVideo">
+        SELECT * FROM pet_videos WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="selectVideosByAdoptionId" resultType="com.pawfinder.adoption.entity.PetVideo">
+        SELECT * FROM pet_videos WHERE adoption_id = #{adoptionId} AND deleted = 0 ORDER BY created_at DESC
+    </select>
+
+    <select id="selectVideosByUserId" resultType="com.pawfinder.adoption.entity.PetVideo">
+        SELECT * FROM pet_videos WHERE user_id = #{userId} AND deleted = 0 ORDER BY created_at DESC
+    </select>
+
+    <select id="selectVideosByStatus" resultType="com.pawfinder.adoption.entity.PetVideo">
+        SELECT * FROM pet_videos WHERE status = #{status} AND deleted = 0 ORDER BY created_at DESC
+    </select>
+
+</mapper>
