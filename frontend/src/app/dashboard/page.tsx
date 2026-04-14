@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, Gift, Video, Settings, Bell, LogOut, PawPrint, Calendar, ChevronRight, FileText, CheckCircle, XCircle, Clock, Shield } from "lucide-react";
+import { Heart, Gift, Video, Settings, Bell, LogOut, PawPrint, Calendar, ChevronRight, ChevronDown, FileText, CheckCircle, XCircle, Clock, Shield, User, Lock } from "lucide-react";
 
 interface Adoption {
   id: string;
@@ -54,6 +57,7 @@ const mockVideos: VideoRecord[] = [
 ];
 
 export default function DashboardPage() {
+  const router = useRouter();
   const user = {
     name: "张三",
     email: "zhangsan@example.com",
@@ -63,6 +67,23 @@ export default function DashboardPage() {
     phone: "138****8888",
     member_since: "2024-01-01",
   };
+
+  // Settings state
+  const [expandedSetting, setExpandedSetting] = useState<string | null>(null);
+  const [profileForm, setProfileForm] = useState({
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+  });
+  const [notifications, setNotifications] = useState({
+    email: true,
+    sms: true,
+    push: false,
+  });
+  const [privacy, setPrivacy] = useState({
+    showProfile: true,
+    showDonations: false,
+  });
 
   const tabs = [
     { value: "overview", label: "概览", icon: PawPrint },
@@ -136,7 +157,19 @@ export default function DashboardPage() {
                       </Button>
                     </Link>
                   ))}
-                  <Button variant="ghost" className="w-full justify-start gap-3 text-red-500 hover:bg-red-50 hover:text-red-600">
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start gap-3 text-red-500 hover:bg-red-50 hover:text-red-600"
+                    onClick={() => {
+                      // Clear auth token
+                      if (typeof window !== 'undefined') {
+                        localStorage.removeItem('auth_token');
+                        localStorage.removeItem('user');
+                      }
+                      // Redirect to home
+                      router.push('/');
+                    }}
+                  >
                     <LogOut className="w-5 h-5" />
                     退出登录
                   </Button>
@@ -360,26 +393,154 @@ export default function DashboardPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 border border-gray-100 hover:shadow-sm transition-shadow cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <FileText className="w-5 h-5 text-gray-500" />
-                      <span className="text-gray-700">个人信息</span>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  {/* 个人信息 */}
+                  <div className="rounded-lg bg-gray-50 border border-gray-100 overflow-hidden">
+                    <button 
+                      className="w-full flex items-center justify-between p-4 hover:bg-gray-100 transition-colors cursor-pointer"
+                      onClick={() => setExpandedSetting(expandedSetting === 'profile' ? null : 'profile')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <User className="w-5 h-5 text-gray-500" />
+                        <span className="text-gray-700 font-medium">个人信息</span>
+                      </div>
+                      <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${expandedSetting === 'profile' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {expandedSetting === 'profile' && (
+                      <div className="p-4 pt-0 border-t border-gray-100 mt-4 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="name" className="text-gray-600">姓名</Label>
+                            <Input 
+                              id="name" 
+                              value={profileForm.name}
+                              onChange={(e) => setProfileForm({...profileForm, name: e.target.value})}
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="email" className="text-gray-600">邮箱</Label>
+                            <Input 
+                              id="email" 
+                              type="email"
+                              value={profileForm.email}
+                              onChange={(e) => setProfileForm({...profileForm, email: e.target.value})}
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="phone" className="text-gray-600">手机号</Label>
+                            <Input 
+                              id="phone" 
+                              value={profileForm.phone}
+                              onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})}
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end">
+                          <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+                            保存修改
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 border border-gray-100 hover:shadow-sm transition-shadow cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <Bell className="w-5 h-5 text-gray-500" />
-                      <span className="text-gray-700">通知设置</span>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
+
+                  {/* 通知设置 */}
+                  <div className="rounded-lg bg-gray-50 border border-gray-100 overflow-hidden">
+                    <button 
+                      className="w-full flex items-center justify-between p-4 hover:bg-gray-100 transition-colors cursor-pointer"
+                      onClick={() => setExpandedSetting(expandedSetting === 'notifications' ? null : 'notifications')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Bell className="w-5 h-5 text-gray-500" />
+                        <span className="text-gray-700 font-medium">通知设置</span>
+                      </div>
+                      <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${expandedSetting === 'notifications' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {expandedSetting === 'notifications' && (
+                      <div className="p-4 pt-0 border-t border-gray-100 mt-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-700 font-medium">邮件通知</p>
+                            <p className="text-sm text-gray-500">接收领养状态变更邮件通知</p>
+                          </div>
+                          <Switch 
+                            checked={notifications.email}
+                            onCheckedChange={(checked) => setNotifications({...notifications, email: checked})}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-700 font-medium">短信通知</p>
+                            <p className="text-sm text-gray-500">接收重要消息的短信提醒</p>
+                          </div>
+                          <Switch 
+                            checked={notifications.sms}
+                            onCheckedChange={(checked) => setNotifications({...notifications, sms: checked})}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-700 font-medium">推送通知</p>
+                            <p className="text-sm text-gray-500">接收浏览器推送通知</p>
+                          </div>
+                          <Switch 
+                            checked={notifications.push}
+                            onCheckedChange={(checked) => setNotifications({...notifications, push: checked})}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 border border-gray-100 hover:shadow-sm transition-shadow cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <Shield className="w-5 h-5 text-gray-500" />
-                      <span className="text-gray-700">隐私设置</span>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
+
+                  {/* 隐私设置 */}
+                  <div className="rounded-lg bg-gray-50 border border-gray-100 overflow-hidden">
+                    <button 
+                      className="w-full flex items-center justify-between p-4 hover:bg-gray-100 transition-colors cursor-pointer"
+                      onClick={() => setExpandedSetting(expandedSetting === 'privacy' ? null : 'privacy')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Lock className="w-5 h-5 text-gray-500" />
+                        <span className="text-gray-700 font-medium">隐私设置</span>
+                      </div>
+                      <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${expandedSetting === 'privacy' ? 'rotate-180' : ''}`} />
+                    </button>
+                    {expandedSetting === 'privacy' && (
+                      <div className="p-4 pt-0 border-t border-gray-100 mt-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-700 font-medium">公开个人资料</p>
+                            <p className="text-sm text-gray-500">允许其他人查看您的公开资料</p>
+                          </div>
+                          <Switch 
+                            checked={privacy.showProfile}
+                            onCheckedChange={(checked) => setPrivacy({...privacy, showProfile: checked})}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-700 font-medium">公开捐赠记录</p>
+                            <p className="text-sm text-gray-500">在捐赠榜单中显示您的捐赠记录</p>
+                          </div>
+                          <Switch 
+                            checked={privacy.showDonations}
+                            onCheckedChange={(checked) => setPrivacy({...privacy, showDonations: checked})}
+                          />
+                        </div>
+                        <div className="pt-4 border-t border-gray-100">
+                          <p className="text-gray-700 font-medium mb-2">修改密码</p>
+                          <div className="space-y-3">
+                            <Input type="password" placeholder="当前密码" />
+                            <Input type="password" placeholder="新密码" />
+                            <Input type="password" placeholder="确认新密码" />
+                            <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+                              修改密码
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
