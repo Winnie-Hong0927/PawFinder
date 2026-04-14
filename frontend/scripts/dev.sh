@@ -1,11 +1,12 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-
 PORT=5000
-COZE_WORKSPACE_PATH="${COZE_WORKSPACE_PATH:-$(pwd)}"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Set workspace to the parent of scripts directory (i.e., frontend root)
+COZE_WORKSPACE_PATH="${SCRIPT_DIR}"
 DEPLOY_RUN_PORT=5000
-
 
 cd "${COZE_WORKSPACE_PATH}"
 

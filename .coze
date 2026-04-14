@@ -2,11 +2,11 @@
 requires = ["nodejs-24"]
 
 [dev]
-build = ["bash", "./scripts/prepare.sh"]
-run = ["bash", "./scripts/dev.sh"]
+build = ["bash", "-c", "cd frontend && pnpm install"]
+run = ["bash", "-c", "cd frontend && pnpm dev"]
 deps = ["git"] # -> apt install git
 
 [deploy]
-build = ["bash","./scripts/build.sh"]
-run = ["bash","./scripts/start.sh"]
+build = ["bash", "-c", "cd frontend && pnpm build"]
+run = ["bash", "-c", "cd frontend && pnpm start"]
 deps = ["git"] # -> apt install git
