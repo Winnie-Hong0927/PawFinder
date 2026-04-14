@@ -97,7 +97,7 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col">
-      {/* Hero Section - 更紧凑的设计 */}
+      {/* Hero Section - 更简洁 */}
       <section className="relative overflow-hidden bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100">
         {/* 装饰性背景元素 */}
         <div className="absolute inset-0 overflow-hidden">
@@ -114,7 +114,7 @@ export default function HomePage() {
           <span className="absolute top-1/2 right-[8%] text-2xl animate-bounce-soft delay-400 opacity-40">🐰</span>
         </div>
 
-        <div className="container mx-auto px-4 pt-8 pb-12 relative z-10">
+        <div className="container mx-auto px-4 pt-10 pb-16 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             {/* Badge */}
             <div className="mb-5 animate-fade-in">
@@ -124,8 +124,8 @@ export default function HomePage() {
               </Badge>
             </div>
 
-            {/* Main Heading - 更清晰的颜色对比 */}
-            <div className="mb-5 animate-fade-in delay-100">
+            {/* Main Heading */}
+            <div className="animate-fade-in delay-100">
               <h1 className="text-4xl md:text-5xl font-bold mb-3">
                 <span className="text-gray-800">找到你的</span>
                 <span className="text-orange-500 ml-2">毛孩子</span>
@@ -135,40 +135,8 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Search Box - 更紧凑，与下方宠物展示更近 */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-2xl mx-auto mb-6 animate-fade-in delay-200">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="搜索你喜欢的宠物..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 h-12 rounded-xl border-2 border-orange-200 focus:border-orange-400 bg-white shadow-sm text-gray-800 placeholder:text-gray-400"
-                />
-              </div>
-              <select
-                value={selectedSpecies}
-                onChange={(e) => setSelectedSpecies(e.target.value)}
-                className="h-12 px-4 rounded-xl border-2 border-orange-200 bg-white focus:border-orange-400 outline-none text-gray-700 shadow-sm"
-              >
-                {speciesOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <Button
-                size="lg"
-                className="h-12 px-6 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-medium shadow-md transition-all hover:shadow-lg"
-              >
-                <Zap className="w-4 h-4 mr-2" />
-                搜索
-              </Button>
-            </div>
-
             {/* Stats - 更紧凑 */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto animate-fade-in delay-300">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto animate-fade-in delay-200 mt-8">
               {stats.map((stat, index) => (
                 <Card key={index} className="bg-white/80 backdrop-blur-sm border-0 shadow-sm hover:shadow-md transition-shadow">
                   <CardContent className="p-3 text-center">
@@ -186,7 +154,7 @@ export default function HomePage() {
         <div className="h-8 bg-gradient-to-b from-orange-100 to-background" />
       </section>
 
-      {/* Features Section - 更紧凑，间距更小 */}
+      {/* Features Section */}
       <section className="py-8 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-6">
@@ -213,9 +181,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Pets Section - 立即展示结果，与搜索栏更近 */}
-      <section className="pb-10 bg-gradient-to-b from-background to-orange-50/50">
+      {/* Pets Section - 搜索框移到宠物展示上方 */}
+      <section className="py-8 bg-gradient-to-b from-background to-orange-50/50">
         <div className="container mx-auto px-4">
+          {/* Section Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
             <div>
               <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
@@ -234,7 +203,42 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {/* Pet Grid - 立即显示，无距离 */}
+          {/* Search Box - 移到宠物展示上方 */}
+          <div className="bg-white rounded-2xl shadow-md border border-orange-100 p-4 mb-6">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="搜索你喜欢的宠物名字、品种..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-12 h-12 rounded-xl border-2 border-orange-200 focus:border-orange-400 bg-white text-gray-800 placeholder:text-gray-400"
+                />
+              </div>
+              <select
+                value={selectedSpecies}
+                onChange={(e) => setSelectedSpecies(e.target.value)}
+                className="h-12 px-4 rounded-xl border-2 border-orange-200 bg-white focus:border-orange-400 outline-none text-gray-700"
+              >
+                {speciesOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <Button
+                size="lg"
+                onClick={fetchPets}
+                className="h-12 px-6 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-medium shadow-md transition-all hover:shadow-lg"
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                搜索
+              </Button>
+            </div>
+          </div>
+
+          {/* Pet Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => <PetCardSkeleton key={i} />)
@@ -251,7 +255,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* CTA Section - 修复按钮颜色 */}
       <section className="py-14 bg-gradient-to-r from-orange-500 to-amber-500">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
@@ -264,7 +268,7 @@ export default function HomePage() {
             <Link href="/donate">
               <Button
                 size="lg"
-                className="bg-white text-orange-600 hover:bg-orange-50 gap-2 shadow-lg"
+                className="bg-white text-orange-700 hover:bg-orange-50 gap-2 shadow-lg font-semibold min-w-[140px]"
               >
                 <Gift className="w-5 h-5" />
                 立即捐赠
@@ -273,8 +277,7 @@ export default function HomePage() {
             <Link href="/pets">
               <Button
                 size="lg"
-                variant="outline"
-                className="border-white text-white hover:bg-white/20 gap-2"
+                className="bg-orange-700 text-white hover:bg-orange-800 gap-2 shadow-lg font-semibold min-w-[140px]"
               >
                 <Heart className="w-5 h-5" />
                 领养宠物

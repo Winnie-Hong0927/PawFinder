@@ -124,14 +124,14 @@ export default function PetDetailPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary-500 to-primary-600 py-8">
+      <div className="bg-gradient-to-r from-orange-500 to-amber-500 py-6">
         <div className="container mx-auto px-4">
           <Link
             href="/pets"
-            className="inline-flex items-center gap-2 text-white hover:text-primary-100 transition-colors"
+            className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white font-medium hover:bg-white/30 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            返回列表
+            <span>返回列表</span>
           </Link>
         </div>
       </div>
