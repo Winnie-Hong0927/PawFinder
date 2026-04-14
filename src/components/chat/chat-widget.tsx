@@ -97,8 +97,8 @@ export function ChatWidget({ className }: ChatWidgetProps) {
 
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-6 right-6 w-[380px] h-[500px] shadow-xl flex flex-col z-50 animate-fade-in">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-t-lg">
+        <Card className="fixed bottom-6 right-6 w-[380px] h-[500px] shadow-xl flex flex-col z-50 animate-fade-in border-2 border-orange-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-t-lg">
             <div className="flex items-center gap-2">
               <Bot className="w-6 h-6" />
               <CardTitle className="text-lg font-semibold">小 paw</CardTitle>
@@ -107,7 +107,7 @@ export function ChatWidget({ className }: ChatWidgetProps) {
               variant="ghost"
               size="icon"
               onClick={() => setIsOpen(false)}
-              className="text-white hover:bg-white/20"
+              className="bg-white/20 hover:bg-white/30 text-white rounded-full w-8 h-8 flex items-center justify-center"
             >
               <X className="w-5 h-5" />
             </Button>
