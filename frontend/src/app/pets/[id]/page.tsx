@@ -213,10 +213,10 @@ export default function PetDetailPage() {
 
       <div className="max-w-4xl mx-auto px-4 py-4">
         {/* Top Section: Image + Basic Info side by side */}
-        <div className="flex gap-4 mb-4">
+        <div className="flex gap-4 mb-3">
           {/* Left: Small Thumbnail Grid */}
-          <div className="w-28 flex-shrink-0">
-            <div className="grid grid-cols-2 gap-1">
+          <div className="w-32 flex-shrink-0">
+            <div className="grid grid-cols-2 gap-1.5">
               {images.slice(0, 4).map((img, index) => (
                 <button
                   key={index}
@@ -231,7 +231,7 @@ export default function PetDetailPage() {
               ))}
             </div>
             {images.length > 4 && (
-              <p className="text-[10px] text-gray-400 mt-1 text-center">+{images.length - 4}张照片</p>
+              <p className="text-xs text-gray-400 mt-1 text-center">+{images.length - 4}张照片</p>
             )}
           </div>
           
@@ -239,53 +239,53 @@ export default function PetDetailPage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between mb-2">
               <div>
-                <h1 className="text-base font-bold text-gray-800 leading-tight">{pet.name}</h1>
-                <p className="text-xs text-gray-500">{speciesLabels[pet.species]}{pet.breed || "混血"} · {pet.age}</p>
+                <h1 className="text-xl font-bold text-gray-800 leading-tight">{pet.name}</h1>
+                <p className="text-sm text-gray-500 mt-0.5">{speciesLabels[pet.species]}{pet.breed || "混血"} · {pet.age}</p>
               </div>
-              <Badge className={cn("text-white text-[10px] px-1.5 py-0", statusColor)}>
+              <Badge className={cn("text-white text-xs px-2 py-0.5", statusColor)}>
                 {statusLabel}
               </Badge>
             </div>
             
             {/* Quick tags */}
-            <div className="flex flex-wrap gap-1 mb-2">
-              <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">{genderLabels[pet.gender]}</span>
-              <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">{sizeLabels[pet.size]}</span>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">{genderLabels[pet.gender]}</span>
+              <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">{sizeLabels[pet.size]}</span>
               {pet.traits?.slice(0, 2).map((trait, i) => (
-                <span key={i} className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded">{trait}</span>
+                <span key={i} className="text-xs px-2 py-0.5 bg-amber-50 text-amber-600 rounded">{trait}</span>
               ))}
             </div>
             
-            {/* Health & Location - compact */}
-            <div className="flex items-center gap-3 text-[11px] text-gray-400">
+            {/* Health & Location */}
+            <div className="flex items-center gap-4 text-sm text-gray-400">
               {pet.vaccination_status && (
-                <span className="flex items-center gap-0.5"><CheckCircle className="w-3 h-3 text-emerald-500" />疫苗</span>
+                <span className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-emerald-500" />疫苗</span>
               )}
               {pet.sterilization_status && (
-                <span className="flex items-center gap-0.5"><CheckCircle className="w-3 h-3 text-emerald-500" />已绝育</span>
+                <span className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-emerald-500" />已绝育</span>
               )}
-              <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" />{pet.shelter_location?.slice(0, 10) || "待定"}</span>
+              <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{pet.shelter_location?.slice(0, 12) || "待定"}</span>
             </div>
           </div>
         </div>
 
         {/* Adopting Card */}
-        <Card className="border-0 shadow-sm bg-white mb-4">
-          <CardContent className="p-3">
+        <Card className="border-0 shadow-sm bg-white mb-3">
+          <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">领养费用</span>
-                <span className="text-base font-bold text-orange-500">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-500">领养费用</span>
+                <span className="text-xl font-bold text-orange-500">
                   {pet.adoption_fee === "0" || !pet.adoption_fee ? "免费" : `¥${pet.adoption_fee}`}
                 </span>
               </div>
               <Button 
                 size="sm" 
-                className="h-7 text-xs bg-gradient-to-r from-orange-500 to-amber-500"
+                className="h-8 text-sm bg-gradient-to-r from-orange-500 to-amber-500 px-4"
                 disabled={pet.status !== "available"}
                 onClick={handleAdoptClick}
               >
-                <Heart className="w-3 h-3 mr-1" />
+                <Heart className="w-4 h-4 mr-1.5" />
                 {pet.status === "available" ? "申请领养" : "暂不可申请"}
               </Button>
             </div>
@@ -293,23 +293,23 @@ export default function PetDetailPage() {
         </Card>
 
         {/* Description */}
-        <Card className="border-0 shadow-sm bg-white mb-4">
-          <CardContent className="p-3">
-            <h3 className="text-xs font-medium text-gray-700 mb-1.5">详细介绍</h3>
-            <p className="text-[11px] text-gray-500 leading-relaxed">
+        <Card className="border-0 shadow-sm bg-white mb-3">
+          <CardContent className="p-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">详细介绍</h3>
+            <p className="text-sm text-gray-600 leading-relaxed">
               {pet.description || "暂无详细描述。"}
             </p>
           </CardContent>
         </Card>
 
         {/* Requirements */}
-        <Card className="border-0 shadow-sm bg-white mb-4">
-          <CardContent className="p-3">
-            <h3 className="text-xs font-medium text-gray-700 mb-1.5 flex items-center gap-1">
-              <Shield className="w-3 h-3 text-orange-400" />
+        <Card className="border-0 shadow-sm bg-white mb-3">
+          <CardContent className="p-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+              <Shield className="w-4 h-4 text-orange-400" />
               领养须知
             </h3>
-            <ul className="text-[10px] text-gray-500 space-y-0.5">
+            <ul className="text-sm text-gray-600 space-y-1">
               <li>• 年满18周岁，有稳定住所和收入</li>
               <li>• 家人同意领养，愿意为宠物提供终身照料</li>
               <li>• 按时接种疫苗，定期体检，科学喂养</li>
@@ -321,11 +321,11 @@ export default function PetDetailPage() {
         {/* All Traits */}
         {pet.traits && pet.traits.length > 0 && (
           <Card className="border-0 shadow-sm bg-white">
-            <CardContent className="p-3">
-              <h3 className="text-xs font-medium text-gray-700 mb-1.5">特征标签</h3>
-              <div className="flex flex-wrap gap-1">
+            <CardContent className="p-4">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">特征标签</h3>
+              <div className="flex flex-wrap gap-2">
                 {pet.traits.map((trait, i) => (
-                  <span key={i} className="text-[10px] px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full">{trait}</span>
+                  <span key={i} className="text-sm px-2.5 py-1 bg-amber-50 text-amber-600 rounded-full">{trait}</span>
                 ))}
               </div>
             </CardContent>
