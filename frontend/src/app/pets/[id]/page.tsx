@@ -99,10 +99,35 @@ export default function PetDetailPage() {
   });
 
   useEffect(() => {
-    if (params.id) {
-      fetchPet(params.id as string);
-    }
-  }, [params.id]);
+    // In Next.js 15+, params might be a Promise that needs to be awaited
+    const loadPet = async () => {
+      try {
+        // Handle both Promise and direct object cases
+        let resolvedParams = params;
+        if (params && typeof params.then === 'function') {
+          resolvedParams = await params;
+        }
+        
+        // Get petId from params - handle both string and string[] cases
+        let petId: string | undefined;
+        if (resolvedParams && typeof resolvedParams === 'object' && 'id' in resolvedParams) {
+          const idValue = (resolvedParams as {id: string | string[]}).id;
+          petId = Array.isArray(idValue) ? idValue[0] : idValue;
+        }
+        
+        if (petId) {
+          await fetchPet(petId);
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error loading pet:", error);
+        setLoading(false);
+      }
+    };
+    
+    loadPet();
+  }, [params]);
 
   const fetchPet = async (id: string) => {
     try {
