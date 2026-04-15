@@ -13,23 +13,15 @@ interface Message {
   content: string;
 }
 
-interface ChatWidgetProps {
-  className?: string;
-}
-
-export function ChatWidget({ className }: ChatWidgetProps) {
+export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSend = async () => {
@@ -42,6 +34,7 @@ export function ChatWidget({ className }: ChatWidgetProps) {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const currentInput = input.trim();
     setInput("");
     setIsLoading(true);
 
@@ -52,7 +45,7 @@ export function ChatWidget({ className }: ChatWidgetProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: userMessage.content,
+          message: currentInput,
           session_id: `session_${Date.now()}`,
         }),
       });
@@ -81,73 +74,69 @@ export function ChatWidget({ className }: ChatWidgetProps) {
     }
   };
 
+  const quickQuestions = [
+    "我想领养一只猫",
+    "领养流程是什么？",
+    "需要准备什么材料？",
+  ];
+
   return (
     <>
       {/* Chat Button */}
       <Button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg bg-gradient-to-br from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 transition-all z-50",
-          isOpen && "hidden",
-          className
+          "fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg bg-gradient-to-br from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 transition-all z-50 flex items-center justify-center"
         )}
       >
-        <Bot className="w-7 h-7 text-white" />
+        {isOpen ? (
+          <X className="w-6 h-6 text-white" />
+        ) : (
+          <Bot className="w-7 h-7 text-white" />
+        )}
       </Button>
 
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-6 right-6 w-[380px] h-[500px] shadow-xl flex flex-col z-50 animate-fade-in border-2 border-orange-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-t-lg">
-            <div className="flex items-center gap-2">
-              <Bot className="w-6 h-6" />
-              <CardTitle className="text-lg font-semibold">小 paw</CardTitle>
+        <Card className="fixed bottom-24 right-6 w-[360px] h-[480px] shadow-xl flex flex-col z-50 border-2 border-orange-200 bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-none">
+            <div className="flex items-center gap-2 px-4 py-3">
+              <Bot className="w-5 h-5" />
+              <CardTitle className="text-base font-semibold">小 paw 智能助手</CardTitle>
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setIsOpen(false)}
-              className="bg-white/20 hover:bg-white/30 text-white rounded-full w-8 h-8 flex items-center justify-center"
+              className="mr-2 text-white hover:bg-white/20 rounded-full w-8 h-8"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </Button>
           </CardHeader>
 
           <CardContent className="flex-1 flex flex-col p-0">
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
               {/* Welcome Message */}
               {messages.length === 0 && (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary-100 flex items-center justify-center">
-                    <Bot className="w-8 h-8 text-primary-600" />
+                <div className="text-center py-4">
+                  <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-orange-100 flex items-center justify-center">
+                    <Bot className="w-7 h-7 text-orange-500" />
                   </div>
-                  <h3 className="font-semibold text-foreground mb-2">你好！我是小 paw</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    我可以帮你找到合适的宠物伴侣，或者解答关于领养的任何问题。
+                  <h3 className="text-sm font-semibold text-gray-800 mb-1">你好！我是小 paw</h3>
+                  <p className="text-xs text-gray-500 mb-3">
+                    我可以帮你找到合适的宠物伴侣
                   </p>
-                  <div className="space-y-2">
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left"
-                      onClick={() => setInput("我想领养一只猫，有什么推荐吗？")}
-                    >
-                      🐱 我想领养一只猫
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left"
-                      onClick={() => setInput("领养流程是怎样的？")}
-                    >
-                      📋 领养流程是什么？
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left"
-                      onClick={() => setInput("我需要准备什么材料？")}
-                    >
-                      📝 领养需要准备什么？
-                    </Button>
+                  <div className="space-y-2 text-left">
+                    {quickQuestions.map((q, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setInput(q)}
+                        className="w-full text-left text-xs px-3 py-2 bg-white rounded-lg border border-gray-200 text-gray-600 hover:border-orange-300 hover:text-orange-600 transition-colors"
+                      >
+                        {q}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
@@ -163,24 +152,24 @@ export function ChatWidget({ className }: ChatWidgetProps) {
                 >
                   <div
                     className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
+                      "w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0",
                       message.role === "user"
-                        ? "bg-primary-100"
-                        : "bg-accent-100"
+                        ? "bg-orange-100"
+                        : "bg-teal-100"
                     )}
                   >
                     {message.role === "user" ? (
-                      <User className="w-4 h-4 text-primary-600" />
+                      <User className="w-4 h-4 text-orange-500" />
                     ) : (
-                      <Bot className="w-4 h-4 text-accent-600" />
+                      <Bot className="w-4 h-4 text-teal-600" />
                     )}
                   </div>
                   <div
                     className={cn(
-                      "rounded-2xl px-4 py-2 max-w-[80%] whitespace-pre-wrap",
+                      "rounded-2xl px-3 py-2 max-w-[85%] whitespace-pre-wrap text-sm",
                       message.role === "user"
-                        ? "bg-primary-500 text-white rounded-tr-sm"
-                        : "bg-muted rounded-tl-sm"
+                        ? "bg-orange-500 text-white rounded-tr-sm"
+                        : "bg-white border border-gray-100 text-gray-700 rounded-tl-sm"
                     )}
                   >
                     {message.content}
@@ -191,11 +180,11 @@ export function ChatWidget({ className }: ChatWidgetProps) {
               {/* Loading */}
               {isLoading && (
                 <div className="flex items-start gap-2">
-                  <div className="w-8 h-8 rounded-full bg-accent-100 flex items-center justify-center">
-                    <Bot className="w-4 h-4 text-accent-600" />
+                  <div className="w-7 h-7 rounded-full bg-teal-100 flex items-center justify-center">
+                    <Bot className="w-4 h-4 text-teal-600" />
                   </div>
-                  <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3">
-                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm px-4 py-3">
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
                   </div>
                 </div>
               )}
@@ -204,17 +193,26 @@ export function ChatWidget({ className }: ChatWidgetProps) {
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-border/50">
+            <div className="p-3 border-t border-gray-200 bg-white">
               <div className="flex gap-2">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
                   placeholder="输入你的问题..."
-                  className="flex-1"
+                  className="flex-1 text-sm h-10"
                   disabled={isLoading}
                 />
-                <Button onClick={handleSend} disabled={!input.trim() || isLoading}>
+                <Button 
+                  onClick={handleSend} 
+                  disabled={!input.trim() || isLoading}
+                  className="h-10 px-4 bg-orange-500 hover:bg-orange-600"
+                >
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
