@@ -76,7 +76,7 @@ export default function HomePage() {
       const params = new URLSearchParams({
         status: "available",
         page: "1",
-        limit: "8",
+        limit: "4",
       });
       if (selectedSpecies) {
         params.append("species", selectedSpecies);
@@ -239,11 +239,11 @@ export default function HomePage() {
           </div>
 
           {/* Pet Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => <PetCardSkeleton key={i} />)
             ) : pets.length > 0 ? (
-              pets.map((pet) => <PetCard key={pet.id} {...pet} />)
+              pets.slice(0, 4).map((pet) => <PetCard key={pet.id} {...pet} />)
             ) : (
               <div className="col-span-full text-center py-12">
                 <div className="text-5xl mb-3">🐾</div>
