@@ -76,7 +76,7 @@ export default function HomePage() {
       const params = new URLSearchParams({
         status: "available",
         page: "1",
-        limit: "8",
+        limit: "4",
       });
       if (selectedSpecies) {
         params.append("species", selectedSpecies);
