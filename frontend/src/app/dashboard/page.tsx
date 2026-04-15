@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
@@ -11,7 +11,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, Gift, Video, Settings, Bell, LogOut, PawPrint, Calendar, ChevronRight, ChevronDown, FileText, CheckCircle, XCircle, Clock, Shield, User, Lock } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Heart,
+  Gift,
+  Video,
+  Settings,
+  Bell,
+  LogOut,
+  PawPrint,
+  Calendar,
+  ChevronRight,
+  ChevronDown,
+  Camera,
+  Loader2,
+  CheckCircle,
+  User,
+  Lock,
+} from "lucide-react";
 
 interface Adoption {
   id: string;
@@ -59,17 +80,20 @@ const mockVideos: VideoRecord[] = [
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user: authUser, logout, isAuthenticated, isLoading } = useAuth();
+  const { user: authUser, logout, isAuthenticated, isLoading, updateUser } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push("/auth");
+      router.push("/auth/login");
     }
   }, [isLoading, isAuthenticated, router]);
 
   // Use auth user or show loading
   const user = authUser || {
+    id: "",
     name: "加载中...",
     email: "",
     role: "user" as const,
@@ -82,9 +106,10 @@ export default function DashboardPage() {
   // Settings state
   const [expandedSetting, setExpandedSetting] = useState<string | null>(null);
   const [profileForm, setProfileForm] = useState({
-    name: user.name || "",
-    email: user.email || "",
-    phone: user.phone || "",
+    name: "",
+    email: "",
+    phone: "",
+    avatar_url: "",
   });
   const [notifications, setNotifications] = useState({
     email: true,
@@ -95,6 +120,79 @@ export default function DashboardPage() {
     showProfile: true,
     showDonations: false,
   });
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Update form when auth user changes
+  useEffect(() => {
+    if (authUser) {
+      setProfileForm({
+        name: authUser.name || "",
+        email: authUser.email || "",
+        phone: authUser.phone || "",
+        avatar_url: authUser.avatar_url || "",
+      });
+    }
+  }, [authUser]);
+
+  // Handle avatar upload
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type and size
+    if (!file.type.startsWith("image/")) {
+      alert("请选择图片文件");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert("图片大小不能超过5MB");
+      return;
+    }
+
+    setAvatarUploading(true);
+
+    try {
+      // Convert to base64 for demo (in production, upload to cloud storage)
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        setProfileForm((prev) => ({ ...prev, avatar_url: dataUrl }));
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  // Save profile
+  const handleSaveProfile = async () => {
+    if (!authUser) return;
+
+    setSaveSuccess(false);
+    
+    try {
+      // Call API to update profile (demo: just update local state)
+      // const response = await fetch("/api/user/profile", {
+      //   method: "PUT",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify(profileForm),
+      // });
+
+      // Update auth context
+      updateUser({
+        ...authUser,
+        name: profileForm.name,
+        email: profileForm.email,
+        phone: profileForm.phone,
+        avatar_url: profileForm.avatar_url,
+      });
+
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      console.error("Failed to save profile:", error);
+    }
+  };
 
   const tabs = [
     { value: "overview", label: "概览", icon: PawPrint },
@@ -110,18 +208,40 @@ export default function DashboardPage() {
       <div className="bg-gradient-to-r from-orange-500 to-amber-500 py-10 shadow-lg">
         <div className="container mx-auto px-4">
           <div className="flex items-center gap-6">
-            <Avatar className="w-24 h-24 border-4 border-white shadow-md">
-              <AvatarImage src={user.avatar_url} />
-              <AvatarFallback className="bg-white text-orange-600 text-2xl font-bold">
-                {user.name?.[0] || "U"}
-              </AvatarFallback>
-            </Avatar>
+            {/* Avatar with upload support */}
+            <div className="relative">
+              <Avatar 
+                className="w-24 h-24 border-4 border-white shadow-md cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <AvatarImage src={profileForm.avatar_url} />
+                <AvatarFallback className="bg-white text-orange-600 text-2xl font-bold">
+                  {profileForm.name?.[0] || "U"}
+                </AvatarFallback>
+              </Avatar>
+              {avatarUploading ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                  <Loader2 className="w-6 h-6 animate-spin text-white" />
+                </div>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 hover:opacity-100 transition-opacity">
+                  <Camera className="w-6 h-6 text-white" />
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+            </div>
             <div>
               {/* 用户名 - 白色，高对比度 */}
-              <h1 className="text-3xl font-bold text-white mb-1">{user.name}</h1>
+              <h1 className="text-3xl font-bold text-white mb-1">{profileForm.name || user.name}</h1>
               {/* 邮箱 - 浅橙色背景上的白色文字 */}
               <p className="text-white/90 text-sm bg-white/20 px-3 py-1 rounded-full inline-block mb-2">
-                {user.email}
+                {profileForm.email || user.email || "未设置邮箱"}
               </p>
               <div className="flex gap-2 mt-2">
                 <Badge className="bg-white/25 text-white border-0 backdrop-blur-sm">
@@ -140,7 +260,7 @@ export default function DashboardPage() {
           <div className="mt-6 flex flex-wrap gap-4">
             <div className="bg-white/15 backdrop-blur-sm rounded-lg px-4 py-2 text-white">
               <span className="text-white/70 text-sm">手机号：</span>
-              <span className="font-medium">{user.phone}</span>
+              <span className="font-medium">{profileForm.phone || user.phone || "未设置"}</span>
             </div>
             <div className="bg-white/15 backdrop-blur-sm rounded-lg px-4 py-2 text-white">
               <span className="text-white/70 text-sm">注册时间：</span>
@@ -443,8 +563,17 @@ export default function DashboardPage() {
                             />
                           </div>
                         </div>
-                        <div className="flex justify-end">
-                          <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+                        <div className="flex justify-end items-center gap-3">
+                          {saveSuccess && (
+                            <span className="text-green-600 text-sm flex items-center gap-1">
+                              <CheckCircle className="w-4 h-4" />
+                              保存成功
+                            </span>
+                          )}
+                          <Button 
+                            className="bg-orange-500 hover:bg-orange-600 text-white"
+                            onClick={handleSaveProfile}
+                          >
                             保存修改
                           </Button>
                         </div>
