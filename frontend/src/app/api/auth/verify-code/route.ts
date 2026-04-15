@@ -5,21 +5,29 @@ const verificationCodes: Record<string, { code: string; expires: number; type: s
 
 // Mock users database (in production, query real database)
 const mockUsers: Record<string, any> = {
-  "13800138000": {
-    id: "1",
-    name: "演示用户",
-    phone: "138****8000",
-    email: "demo@pawfinder.com",
-    role: "user",
-  },
+  // Pre-defined demo admin account
   "13800138001": {
     id: "2",
     name: "管理员",
-    phone: "138****8001",
+    phone: "13800138001",
     email: "admin@pawfinder.com",
     role: "admin",
   },
 };
+
+// Auto-register new users on first login
+function autoRegister(phone: string) {
+  const user = {
+    id: Date.now().toString(),
+    name: "新用户",
+    phone: phone,
+    email: "",
+    role: "user" as const,
+    created_at: new Date().toISOString(),
+  };
+  mockUsers[phone] = user;
+  return user;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,32 +41,29 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Check if code is correct and not expired
-    const record = verificationCodes[phone];
-    
     // For demo: accept any 6-digit code
     if (code.length === 6) {
       // Clear the used code
       delete verificationCodes[phone];
 
-      // Check if user exists
-      const fullPhone = Object.keys(mockUsers).find(k => k.startsWith(phone.slice(0, 7)));
-      const user = mockUsers[fullPhone || phone] || {
-        id: Date.now().toString(),
-        name: "新用户",
-        phone: phone,
-        email: "",
-        role: "user",
-      };
+      // Check if user exists, if not auto-register
+      let user = mockUsers[phone];
+      let isNewUser = false;
+      
+      if (!user) {
+        user = autoRegister(phone);
+        isNewUser = true;
+      }
 
       // Generate mock token
       const token = Buffer.from(`${user.id}:${Date.now()}`).toString("base64");
 
       return NextResponse.json({
         success: true,
-        message: "验证成功",
+        message: isNewUser ? "注册成功" : "登录成功",
         token,
         user,
+        isNewUser,
       });
     }
 

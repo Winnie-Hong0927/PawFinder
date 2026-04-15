@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PawPrint, Phone, Lock, ArrowRight, Loader2, Shield } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,6 +22,7 @@ export default function LoginPage() {
     code: "",
   });
   const [error, setError] = useState("");
+  const [isNewUser, setIsNewUser] = useState(false);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -57,7 +57,7 @@ export default function LoginPage() {
       const response = await fetch("/api/auth/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: formData.phone, type: "login" }),
+        body: JSON.stringify({ phone: formData.phone }),
       });
       const data = await response.json();
       
@@ -82,7 +82,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Call API to verify code and login
+      // Call API to verify code - this will auto-register if user doesn't exist
       const response = await fetch("/api/auth/verify-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -92,10 +92,18 @@ export default function LoginPage() {
 
       if (data.success) {
         login(data.user);
-        if (data.user.role === "admin") {
-          router.push("/admin");
+        if (data.isNewUser) {
+          setIsNewUser(true);
+          // Short delay to show welcome message before redirect
+          setTimeout(() => {
+            router.push("/dashboard");
+          }, 1500);
         } else {
-          router.push("/dashboard");
+          if (data.user.role === "admin") {
+            router.push("/admin");
+          } else {
+            router.push("/dashboard");
+          }
         }
       } else {
         setError(data.error || "验证码错误");
@@ -103,8 +111,8 @@ export default function LoginPage() {
     } catch {
       // For demo purposes, allow login with any 6-digit code
       const demoUser = {
-        id: "1",
-        name: "演示用户",
+        id: Date.now().toString(),
+        name: "新用户",
         phone: formData.phone,
         email: "",
         role: "user" as const,
@@ -140,118 +148,144 @@ export default function LoginPage() {
         <Card className="shadow-xl border-orange-100">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl text-center text-gray-800">
-              手机号登录
+              {isNewUser ? "注册成功" : "手机号登录"}
             </CardTitle>
             <CardDescription className="text-center">
-              {step === "phone" 
-                ? "输入您的手机号获取验证码" 
-                : "输入收到的验证码完成登录"}
+              {isNewUser 
+                ? "欢迎加入PawFinder，即将跳转到个人中心..." 
+                : step === "phone" 
+                  ? "输入手机号获取验证码" 
+                  : "输入收到的验证码完成登录"}
             </CardDescription>
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
-                  {error}
+            {isNewUser ? (
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center">
+                  <Shield className="w-8 h-8 text-green-600" />
                 </div>
-              )}
-
-              {/* Phone */}
-              <div className="space-y-2">
-                <Label htmlFor="phone">手机号</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="请输入11位手机号"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="pl-10"
-                    disabled={step === "code"}
-                    required
-                  />
-                </div>
+                <p className="text-gray-600">
+                  您的账号已自动创建<br />
+                  <span className="font-medium text-gray-800">{formData.phone}</span>
+                </p>
+                <Loader2 className="w-6 h-6 mx-auto animate-spin text-orange-500" />
               </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
+                    {error}
+                  </div>
+                )}
 
-              {/* Verification Code */}
-              {step === "code" && (
+                {/* Phone */}
                 <div className="space-y-2">
-                  <Label htmlFor="code">验证码</Label>
+                  <Label htmlFor="phone">手机号</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <Input
-                      id="code"
-                      type="text"
-                      placeholder="请输入6位验证码"
-                      value={formData.code}
-                      onChange={(e) => setFormData({ ...formData, code: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                      id="phone"
+                      type="tel"
+                      placeholder="请输入11位手机号"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 11) })}
                       className="pl-10"
-                      maxLength={6}
+                      disabled={step === "code"}
                       required
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    验证码已发送至您的手机，请注意查收
+                </div>
+
+                {/* Verification Code */}
+                {step === "code" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="code">验证码</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        id="code"
+                        type="text"
+                        placeholder="请输入6位验证码"
+                        value={formData.code}
+                        onChange={(e) => setFormData({ ...formData, code: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                        className="pl-10"
+                        maxLength={6}
+                        autoFocus
+                        required
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      验证码已发送至您的手机，请注意查收
+                    </p>
+                  </div>
+                )}
+
+                {step === "phone" ? (
+                  <Button
+                    type="button"
+                    onClick={sendCode}
+                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
+                    disabled={sendingCode || countdown > 0}
+                  >
+                    {sendingCode ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : null}
+                    {countdown > 0 ? `${countdown}秒后重新获取` : "获取验证码"}
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
+                    disabled={loading || formData.code.length !== 6}
+                  >
+                    {loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <ArrowRight className="w-4 h-4 mr-2" />
+                    )}
+                    验证并登录
+                  </Button>
+                )}
+              </form>
+            )}
+
+            {step === "code" && !isNewUser && (
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep("phone");
+                    setFormData({ ...formData, code: "" });
+                  }}
+                  className="text-sm text-gray-500 hover:text-orange-600"
+                >
+                  返回修改手机号
+                </button>
+              </div>
+            )}
+
+            {!isNewUser && (
+              <div className="mt-4 p-3 rounded-lg bg-orange-50 border border-orange-100">
+                <div className="flex items-start gap-2">
+                  <Shield className="w-4 h-4 text-orange-500 mt-0.5" />
+                  <p className="text-xs text-orange-700">
+                    登录即表示您同意服务条款。首次登录将自动创建账号，手机号即为您的主要账号标识。
                   </p>
                 </div>
-              )}
-
-              {step === "phone" ? (
-                <Button
-                  type="button"
-                  onClick={sendCode}
-                  className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
-                  disabled={sendingCode || countdown > 0}
-                >
-                  {sendingCode ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : null}
-                  {countdown > 0 ? `${countdown}秒后重新获取` : "获取验证码"}
-                </Button>
-              ) : (
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
-                  disabled={loading || formData.code.length !== 6}
-                >
-                  {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <ArrowRight className="w-4 h-4 mr-2" />
-                  )}
-                  验证并登录
-                </Button>
-              )}
-            </form>
-
-            <div className="mt-6 text-center text-sm">
-              <span className="text-muted-foreground">还没有账户？</span>
-              <Link href="/register">
-                <Button variant="link" className="text-orange-600 font-medium">
-                  立即注册
-                </Button>
-              </Link>
-            </div>
-
-            <div className="mt-4 p-3 rounded-lg bg-orange-50 border border-orange-100">
-              <div className="flex items-start gap-2">
-                <Shield className="w-4 h-4 text-orange-500 mt-0.5" />
-                <p className="text-xs text-orange-700">
-                  温馨提示：登录即表示您同意我们的服务条款和隐私政策。您的手机号将用于账号安全和重要通知。
-                </p>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
         {/* Demo hint */}
-        <div className="mt-4 p-3 rounded-lg bg-gray-100 border border-gray-200 text-center">
-          <p className="text-xs text-gray-600">
-            演示模式：输入任意6位数字验证码即可登录
-          </p>
-        </div>
+        {step === "code" && !isNewUser && (
+          <div className="mt-4 p-3 rounded-lg bg-gray-100 border border-gray-200 text-center">
+            <p className="text-xs text-gray-600">
+              演示模式：输入任意6位数字验证码即可登录
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
