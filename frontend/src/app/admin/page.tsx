@@ -74,6 +74,9 @@ interface Application {
   pet: { name: string; species: string; images: string[] };
   user: { name: string; email: string };
   reason: string;
+  idCard?: string;
+  livingCondition?: string;
+  experience?: string;
   status: string;
   created_at: string;
 }
@@ -113,6 +116,13 @@ export default function AdminPage() {
     { id: "3", name: "王五", email: "wangwu@example.com", phone: "137****8002", role: "donor", created_at: "2024-01-05" },
   ]);
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Create admin dialog
+  const [createAdminOpen, setCreateAdminOpen] = useState(false);
+  const [createAdminForm, setCreateAdminForm] = useState({
+    phone: "",
+    name: "",
+  });
 
   // Redirect if not admin
   useEffect(() => {
@@ -215,6 +225,55 @@ export default function AdminPage() {
         video.id === id ? { ...video, status } : video
       )
     );
+  };
+
+  const handleSetAdmin = async (userId: string) => {
+    if (!confirm("确定要将此用户设为管理员吗？")) return;
+    
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId ? { ...u, role: "admin" } : u
+      )
+    );
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm("确定要删除此用户吗？此操作不可撤销。")) return;
+    
+    setUsers((prev) => prev.filter((u) => u.id !== userId));
+  };
+
+  const handleCreateAdmin = async () => {
+    if (!createAdminForm.phone || !createAdminForm.name) {
+      alert("请填写完整信息");
+      return;
+    }
+    
+    // Check if user already exists
+    const existing = users.find(u => u.phone === createAdminForm.phone);
+    if (existing) {
+      // Upgrade existing user to admin
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === existing.id ? { ...u, role: "admin" } : u
+        )
+      );
+    } else {
+      // Create new admin user
+      const newAdmin = {
+        id: Date.now().toString(),
+        name: createAdminForm.name,
+        email: "",
+        phone: createAdminForm.phone,
+        role: "admin" as const,
+        adopter_status: undefined,
+        created_at: new Date().toISOString().split("T")[0],
+      };
+      setUsers((prev) => [...prev, newAdmin]);
+    }
+    
+    setCreateAdminOpen(false);
+    setCreateAdminForm({ phone: "", name: "" });
   };
 
   return (
@@ -670,39 +729,113 @@ export default function AdminPage() {
           {/* Users */}
           <TabsContent value="users">
             <Card className="border-orange-100 shadow-sm">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-gray-800">用户管理</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {[
-                    { name: "张三", email: "zhangsan@example.com", role: "领养人", status: "已认证", avatar: "张" },
-                    { name: "李四", email: "lisi@example.com", role: "领养人", status: "待审核", avatar: "李" },
-                    { name: "王五", email: "wangwu@example.com", role: "捐赠人", status: "已认证", avatar: "王" },
-                    { name: "赵六", email: "zhaoliu@example.com", role: "捐赠人", status: "已认证", avatar: "赵" },
-                    { name: "孙七", email: "sunqi@example.com", role: "领养人", status: "待审核", avatar: "孙" },
-                    { name: "周八", email: "zhouba@example.com", role: "领养人", status: "已认证", avatar: "周" },
-                  ].map((user, i) => (
-                    <div key={i} className="p-4 bg-white rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
-                      <div className="flex items-center gap-3 mb-3">
-                        <Avatar className="w-12 h-12 bg-orange-100">
-                          <AvatarFallback className="text-orange-600 font-bold">{user.avatar}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-gray-800">{user.name}</p>
-                          <p className="text-xs text-gray-500">{user.email}</p>
-                        </div>
+                <Dialog open={createAdminOpen} onOpenChange={setCreateAdminOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white">
+                      <Plus className="w-4 h-4 mr-2" />
+                      创建管理员
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>创建管理员账号</DialogTitle>
+                      <DialogDescription>
+                        输入手机号或用户名创建新的管理员账号。如果用户已存在，将升级为管理员。
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="adminPhone">手机号</Label>
+                        <Input
+                          id="adminPhone"
+                          placeholder="请输入手机号"
+                          value={createAdminForm.phone}
+                          onChange={(e) => setCreateAdminForm({ ...createAdminForm, phone: e.target.value })}
+                        />
                       </div>
-                      <div className="flex items-center justify-between">
-                        <Badge variant="outline" className="border-orange-200 text-orange-600">
-                          {user.role}
-                        </Badge>
-                        <Badge className={user.status === "已认证" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}>
-                          {user.status}
-                        </Badge>
+                      <div className="space-y-2">
+                        <Label htmlFor="adminName">姓名</Label>
+                        <Input
+                          id="adminName"
+                          placeholder="请输入姓名"
+                          value={createAdminForm.name}
+                          onChange={(e) => setCreateAdminForm({ ...createAdminForm, name: e.target.value })}
+                        />
                       </div>
                     </div>
-                  ))}
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setCreateAdminOpen(false)}>取消</Button>
+                      <Button className="bg-orange-500 hover:bg-orange-600" onClick={handleCreateAdmin}>
+                        创建
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {/* Users Table */}
+                <div className="rounded-lg border border-gray-200 overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-orange-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">用户</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">手机号</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">角色</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">认证状态</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">注册时间</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {users.map((u) => (
+                        <tr key={u.id} className="hover:bg-orange-50/50">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="w-10 h-10 bg-orange-100">
+                                <AvatarFallback className="text-orange-600 font-medium">{u.name?.[0] || "U"}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium text-gray-800">{u.name}</p>
+                                <p className="text-xs text-gray-500">{u.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">{u.phone}</td>
+                          <td className="px-4 py-3">
+                            <Badge className={u.role === "admin" ? "bg-red-500" : u.role === "donor" ? "bg-emerald-500" : "bg-blue-500"}>
+                              {u.role === "admin" ? "管理员" : u.role === "donor" ? "捐赠人" : "领养人"}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge className={u.adopter_status === "approved" ? "bg-emerald-100 text-emerald-700" : u.adopter_status === "pending" ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-500"}>
+                              {u.adopter_status === "approved" ? "已认证" : u.adopter_status === "pending" ? "待审核" : "未申请"}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-gray-500">{u.created_at}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {u.role !== "admin" && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-red-600 hover:bg-red-50"
+                                  onClick={() => handleSetAdmin(u.id)}
+                                >
+                                  <Settings className="w-4 h-4 mr-1" />
+                                  设为管理员
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="sm" className="text-orange-600 hover:bg-orange-50">
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </CardContent>
             </Card>
