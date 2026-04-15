@@ -220,13 +220,13 @@ export default function PetsPage() {
             </div>
 
             {loading && pets.length === 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                {Array.from({ length: 6 }).map((_, i) => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                {Array.from({ length: 8 }).map((_, i) => (
                   <PetCardSkeleton key={i} />
                 ))}
               </div>
             ) : pets.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                 {pets.map((pet) => (
                   <PetCard key={pet.id} {...pet} />
                 ))}
