@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+import { AdminRoute } from "@/components/auth/protected-route";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +51,10 @@ import {
   Package,
   Clock,
   UserCheck,
+  Loader2,
+  Search,
+  Edit,
+  Trash2,
 } from "lucide-react";
 
 interface Pet {
@@ -92,12 +99,31 @@ interface StatCard {
 }
 
 export default function AdminPage() {
+  const { user, logout, isAuthenticated, isLoading: authLoading, isAdmin } = useAuth();
+  const router = useRouter();
   const [pets, setPets] = useState<Pet[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
+  const [users, setUsers] = useState([
+    { id: "1", name: "张三", email: "zhangsan@example.com", phone: "138****8000", role: "adopter", adopter_status: "approved", created_at: "2024-01-01" },
+    { id: "2", name: "李四", email: "lisi@example.com", phone: "139****8001", role: "adopter", adopter_status: "pending", created_at: "2024-01-10" },
+    { id: "3", name: "王五", email: "wangwu@example.com", phone: "137****8002", role: "donor", created_at: "2024-01-05" },
+  ]);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Redirect if not admin
+  useEffect(() => {
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.push("/auth/login");
+      } else if (!isAdmin) {
+        router.push("/dashboard");
+      }
+    }
+  }, [authLoading, isAuthenticated, isAdmin, router]);
 
   useEffect(() => {
     // 模拟数据
@@ -106,6 +132,8 @@ export default function AdminPage() {
         { id: "1", name: "小白", species: "cat", breed: "中华田园猫", images: [], status: "available", created_at: "2024-01-15" },
         { id: "2", name: "旺财", species: "dog", breed: "金毛", images: [], status: "pending", created_at: "2024-01-14" },
         { id: "3", name: "团子", species: "rabbit", breed: "垂耳兔", images: [], status: "adopted", created_at: "2024-01-13" },
+        { id: "4", name: "花花", species: "cat", breed: "布偶猫", images: [], status: "available", created_at: "2024-01-16" },
+        { id: "5", name: "大黄", species: "dog", breed: "柴犬", images: [], status: "available", created_at: "2024-01-17" },
       ]);
       setApplications([
         {
@@ -114,9 +142,25 @@ export default function AdminPage() {
           user_id: "u1",
           pet: { name: "旺财", species: "dog", images: [] },
           user: { name: "李四", email: "lisi@example.com" },
-          reason: "一直想养一只金毛，有足够的时间和精力照顾它。",
+          reason: "一直想养一只金毛，有足够的时间和精力照顾它。希望能给旺财一个温暖的家。",
+          idCard: "110101199001011234",
+          livingCondition: "住在有院子的房子里，空间充足",
+          experience: "养过两只狗，有丰富的养狗经验",
           status: "pending",
           created_at: "2024-01-18",
+        },
+        {
+          id: "2",
+          pet_id: "1",
+          user_id: "u2",
+          pet: { name: "小白", species: "cat", images: [] },
+          user: { name: "赵六", email: "zhaoliu@example.com" },
+          reason: "独居人士，希望有一只猫陪伴。",
+          idCard: "110101199201021234",
+          livingCondition: "公寓，面积60平米",
+          experience: "第一次养猫",
+          status: "pending",
+          created_at: "2024-01-19",
         },
       ]);
       setVideos([
@@ -130,16 +174,30 @@ export default function AdminPage() {
           status: "pending",
           created_at: "2024-01-20",
         },
+        {
+          id: "2",
+          user_id: "u3",
+          pet_name: "旺财",
+          video_url: "/videos/sample2.mp4",
+          thumbnail_url: "",
+          description: "旺财在院子里玩耍的视频",
+          status: "pending",
+          created_at: "2024-01-21",
+        },
       ]);
       setLoading(false);
     }, 500);
   }, []);
 
+  const pendingApplications = applications.filter(a => a.status === "pending");
+  const pendingVideos = videos.filter(v => v.status === "pending");
+  const pendingUsers = users.filter(u => u.adopter_status === "pending");
+
   const stats: StatCard[] = [
-    { title: "总宠物数", value: "156", change: "+12", icon: PawPrint, trend: "up", color: "bg-orange-100 text-orange-600" },
-    { title: "待审核申请", value: "8", change: "+3", icon: Heart, trend: "up", color: "bg-rose-100 text-rose-600" },
-    { title: "本月领养", value: "23", change: "+5", icon: Users, trend: "up", color: "bg-emerald-100 text-emerald-600" },
-    { title: "收到捐赠", value: "¥12,580", change: "-8%", icon: Gift, trend: "down", color: "bg-amber-100 text-amber-600" },
+    { title: "总宠物数", value: pets.length.toString(), change: "+2", icon: PawPrint, trend: "up", color: "bg-orange-100 text-orange-600" },
+    { title: "待审核申请", value: pendingApplications.length.toString(), change: "+1", icon: Heart, trend: "up", color: "bg-rose-100 text-rose-600" },
+    { title: "本月领养", value: "3", change: "+1", icon: Users, trend: "up", color: "bg-emerald-100 text-emerald-600" },
+    { title: "待审核视频", value: pendingVideos.length.toString(), change: "0", icon: Video, trend: "up", color: "bg-amber-100 text-amber-600" },
   ];
 
   const handleReviewApplication = async (id: string, status: "approved" | "rejected") => {
@@ -177,16 +235,21 @@ export default function AdminPage() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2 text-white">
                 <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center text-sm font-bold">
-                  A
+                  {user?.name?.charAt(0) || "A"}
                 </div>
-                <span className="text-sm font-medium">管理员</span>
+                <span className="text-sm font-medium">{user?.name || "管理员"}</span>
               </div>
-              <Link href="/">
-                <Button variant="ghost" className="text-white hover:bg-white/20 gap-2">
-                  <LogOut className="w-4 h-4" />
-                  <span>返回首页</span>
-                </Button>
-              </Link>
+              <Button 
+                variant="ghost" 
+                className="text-white hover:bg-white/20 gap-2"
+                onClick={() => {
+                  logout();
+                  router.push("/");
+                }}
+              >
+                <LogOut className="w-4 h-4" />
+                <span>退出登录</span>
+              </Button>
             </div>
           </div>
         </div>
@@ -196,10 +259,10 @@ export default function AdminPage() {
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "待审核领养", count: 3, icon: Clock, color: "from-amber-400 to-orange-500", bg: "bg-amber-50" },
-            { label: "待审核视频", count: 5, icon: Video, color: "from-purple-400 to-pink-500", bg: "bg-purple-50" },
-            { label: "待审核用户", count: 2, icon: UserCheck, color: "from-blue-400 to-cyan-500", bg: "bg-blue-50" },
-            { label: "今日新增捐赠", count: 8, icon: DollarSign, color: "from-emerald-400 to-green-500", bg: "bg-emerald-50" },
+            { label: "待审核领养", count: pendingApplications.length, icon: Clock, color: "from-amber-400 to-orange-500", bg: "bg-amber-50" },
+            { label: "待审核视频", count: pendingVideos.length, icon: Video, color: "from-purple-400 to-pink-500", bg: "bg-purple-50" },
+            { label: "待审核用户", count: pendingUsers.length, icon: UserCheck, color: "from-blue-400 to-cyan-500", bg: "bg-blue-50" },
+            { label: "总宠物数", count: pets.length, icon: PawPrint, color: "from-emerald-400 to-green-500", bg: "bg-emerald-50" },
           ].map((item, i) => (
             <Card key={i} className="border-0 shadow-md overflow-hidden">
               <CardContent className="p-4">

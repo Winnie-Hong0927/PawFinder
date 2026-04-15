@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,22 +59,32 @@ const mockVideos: VideoRecord[] = [
 
 export default function DashboardPage() {
   const router = useRouter();
-  const user = {
-    name: "张三",
-    email: "zhangsan@example.com",
-    role: "adopter",
+  const { user: authUser, logout, isAuthenticated, isLoading } = useAuth();
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/auth");
+    }
+  }, [isLoading, isAuthenticated, router]);
+
+  // Use auth user or show loading
+  const user = authUser || {
+    name: "加载中...",
+    email: "",
+    role: "user" as const,
     avatar_url: "",
-    adopter_status: "approved",
-    phone: "138****8888",
-    member_since: "2024-01-01",
+    adopter_status: undefined,
+    phone: "",
+    member_since: "",
   };
 
   // Settings state
   const [expandedSetting, setExpandedSetting] = useState<string | null>(null);
   const [profileForm, setProfileForm] = useState({
-    name: user.name,
-    email: user.email,
-    phone: user.phone,
+    name: user.name || "",
+    email: user.email || "",
+    phone: user.phone || "",
   });
   const [notifications, setNotifications] = useState({
     email: true,
@@ -161,12 +172,7 @@ export default function DashboardPage() {
                     variant="ghost" 
                     className="w-full justify-start gap-3 text-red-500 hover:bg-red-50 hover:text-red-600"
                     onClick={() => {
-                      // Clear auth token
-                      if (typeof window !== 'undefined') {
-                        localStorage.removeItem('auth_token');
-                        localStorage.removeItem('user');
-                      }
-                      // Redirect to home
+                      logout();
                       router.push('/');
                     }}
                   >
