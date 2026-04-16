@@ -7,7 +7,8 @@
 ### 启动开发服务器
 
 ```bash
-coze dev
+pnpm install
+pnpm dev
 ```
 
 启动后，在浏览器中打开 [http://localhost:5000](http://localhost:5000) 查看应用。
@@ -17,14 +18,26 @@ coze dev
 ### 构建生产版本
 
 ```bash
-coze build
+pnpm build
 ```
 
 ### 启动生产服务器
 
 ```bash
-coze start
+pnpm start
 ```
+
+## 环境配置
+
+项目使用 Supabase 作为数据库，需要配置以下环境变量：
+
+```bash
+# 在项目根目录创建 .env.local 文件
+NEXT_PUBLIC_SUPABASE_URL=你的Supabase项目URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=你的Supabase匿名Key
+```
+
+> **注意**：如果依赖后端微服务，需要同时启动后端服务。
 
 ## 项目结构
 

@@ -192,12 +192,12 @@ export default function HomePage() {
                 待领养的小可爱
               </h2>
               <p className="text-gray-500 text-sm mt-1">
-                点击卡片查看详情，开始你的领养之旅
+                还有很多可爱的小家伙在等你哦
               </p>
             </div>
             <Link href="/pets">
               <Button variant="outline" className="border-orange-300 text-orange-600 hover:bg-orange-50 gap-2">
-                查看全部
+                查看全部宠物
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
