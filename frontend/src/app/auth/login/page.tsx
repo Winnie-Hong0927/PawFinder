@@ -12,7 +12,7 @@ import { PawPrint, Phone, Lock, ArrowRight, Loader2, Shield } from "lucide-react
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated, isLoading: authLoading, isAdmin } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading, isAdmin, isSysAdmin } = useAuth();
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [loading, setLoading] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
@@ -27,13 +27,15 @@ export default function LoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      if (isAdmin) {
+      if (isSysAdmin) {
+        router.push("/admin");
+      } else if (isAdmin) {
         router.push("/admin");
       } else {
         router.push("/dashboard");
       }
     }
-  }, [authLoading, isAuthenticated, isAdmin, router]);
+  }, [authLoading, isAuthenticated, isSysAdmin, isAdmin, router]);
 
   // Countdown timer
   useEffect(() => {
@@ -99,7 +101,7 @@ export default function LoginPage() {
             router.push("/dashboard");
           }, 1500);
         } else {
-          if (data.user.role === "admin") {
+          if (data.user.role === "sysadmin" || data.user.role === "institution_admin" || data.user.role === "admin") {
             router.push("/admin");
           } else {
             router.push("/dashboard");

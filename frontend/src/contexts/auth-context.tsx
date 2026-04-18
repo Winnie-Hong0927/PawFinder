@@ -7,7 +7,8 @@ interface User {
   name: string;
   email: string;
   phone: string;
-  role: "user" | "adopter" | "donor" | "admin";
+  role: "user" | "adopter" | "donor" | "admin" | "sysadmin" | "institution_admin";
+  institution_id?: string;
   avatar_url?: string;
   adopter_status?: "pending" | "approved" | "rejected";
 }
@@ -20,6 +21,8 @@ interface AuthContextType {
   updateUser: (userData: Partial<User>) => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isSysAdmin: boolean;
+  isInstitutionAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,7 +69,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const isAuthenticated = !!user;
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "sysadmin" || user?.role === "institution_admin";
+  const isSysAdmin = user?.role === "sysadmin";
+  const isInstitutionAdmin = user?.role === "institution_admin";
 
   return (
     <AuthContext.Provider
@@ -78,6 +83,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateUser,
         isAuthenticated,
         isAdmin,
+        isSysAdmin,
+        isInstitutionAdmin,
       }}
     >
       {children}

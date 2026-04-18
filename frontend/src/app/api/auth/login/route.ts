@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
         name: user.name,
         phone: user.phone,
         role: user.role,
+        institution_id: user.institution_id,
         avatar_url: user.avatar_url,
         adopter_status: user.adopter_status,
       },

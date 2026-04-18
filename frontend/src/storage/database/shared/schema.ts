@@ -1,6 +1,41 @@
 import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, timestamp, boolean, jsonb, index, decimal, pgPolicy } from "drizzle-orm/pg-core";
 
+// ==================== 机构表 ====================
+export const institutions = pgTable("institutions", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  logo_url: text("logo_url"),
+  contact_phone: varchar("contact_phone", { length: 20 }),
+  contact_email: varchar("contact_email", { length: 255 }),
+  address: text("address"),
+  license_url: text("license_url"), // 营业执照
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, approved, rejected
+  verified_at: timestamp("verified_at", { withTimezone: true }),
+  verified_by: varchar("verified_by", { length: 36 }),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ==================== 机构管理员申请表 ====================
+export const institutionAdminRequests = pgTable("institution_admin_requests", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  institution_id: varchar("institution_id", { length: 36 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 20 }).notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  id_card_number: varchar("id_card_number", { length: 20 }),
+  id_card_front_url: text("id_card_front_url"),
+  id_card_back_url: text("id_card_back_url"),
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, approved, rejected
+  rejection_reason: text("rejection_reason"),
+  reviewed_by: varchar("reviewed_by", { length: 36 }),
+  reviewed_at: timestamp("reviewed_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ==================== 用户表 ====================
 export const users = pgTable("users", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -8,7 +43,8 @@ export const users = pgTable("users", {
   phone: varchar("phone", { length: 20 }),
   name: varchar("name", { length: 100 }),
   avatar_url: text("avatar_url"),
-  role: varchar("role", { length: 20 }).default("user").notNull(),
+  role: varchar("role", { length: 20 }).default("user").notNull(), // user, sysadmin, institution_admin
+  institution_id: varchar("institution_id", { length: 36 }), // 关联机构
   id_card_number: varchar("id_card_number", { length: 20 }),
   id_card_front_url: text("id_card_front_url"),
   id_card_back_url: text("id_card_back_url"),
@@ -23,6 +59,7 @@ export const users = pgTable("users", {
 // ==================== 宠物表 ====================
 export const pets = pgTable("pets", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  institution_id: varchar("institution_id", { length: 36 }), // 关联机构
   name: varchar("name", { length: 100 }).notNull(),
   species: varchar("species", { length: 50 }).notNull(),
   breed: varchar("breed", { length: 100 }),
@@ -149,6 +186,8 @@ export type Video = typeof petVideos.$inferSelect;
 export type DonationCampaign = typeof donationCampaigns.$inferSelect;
 export type Donation = typeof donations.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+export type Institution = typeof institutions.$inferSelect;
+export type InstitutionAdminRequest = typeof institutionAdminRequests.$inferSelect;
 
 // ==================== Input Types ====================
 export interface InsertUser {
@@ -157,6 +196,7 @@ export interface InsertUser {
   name?: string | null;
   avatar_url?: string | null;
   role?: string;
+  institution_id?: string | null;
   id_card_number?: string | null;
   id_card_front_url?: string | null;
   id_card_back_url?: string | null;
@@ -169,6 +209,7 @@ export interface InsertUser {
 export interface InsertPet {
   name: string;
   species: string;
+  institution_id?: string | null;
   breed?: string | null;
   age?: string | null;
   gender?: string | null;
@@ -183,6 +224,28 @@ export interface InsertPet {
   adoption_fee?: string | number | null;
   status?: string;
   created_by?: string | null;
+}
+
+export interface InsertInstitution {
+  name: string;
+  description?: string | null;
+  logo_url?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
+  address?: string | null;
+  license_url?: string | null;
+  status?: string;
+}
+
+export interface InsertInstitutionAdminRequest {
+  institution_id: string;
+  email: string;
+  phone: string;
+  name: string;
+  id_card_number?: string | null;
+  id_card_front_url?: string | null;
+  id_card_back_url?: string | null;
+  status?: string;
 }
 
 export interface InsertApplication {
