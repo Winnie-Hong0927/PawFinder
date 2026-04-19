@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
     let pets: any = {};
     let users: any = {};
     let institutions: any = {};
+    let petApplicationCounts: Record<string, number> = {};
 
     if (petIds.length > 0) {
       const { data: petsData } = await supabase
@@ -63,6 +64,16 @@ export async function GET(request: NextRequest) {
         .in("id", [...new Set(petIds)]);
       
       petsData?.forEach(p => { pets[p.id] = p; });
+      
+      // Get application count for each pet
+      const uniquePetIds = [...new Set(petIds)];
+      for (const pid of uniquePetIds) {
+        const { count } = await supabase
+          .from("adoption_applications")
+          .select("*", { count: "exact", head: true })
+          .eq("pet_id", pid);
+        petApplicationCounts[pid] = count || 0;
+      }
     }
 
     if (userIds.length > 0) {
@@ -77,7 +88,7 @@ export async function GET(request: NextRequest) {
     // Combine the data
     const enrichedApplications = applications?.map(app => ({
       ...app,
-      pet: pets[app.pet_id] || null,
+      pet: pets[app.pet_id] ? { ...pets[app.pet_id], application_count: petApplicationCounts[app.pet_id] || 0 } : null,
       user: users[app.user_id] || null,
     })) || [];
 

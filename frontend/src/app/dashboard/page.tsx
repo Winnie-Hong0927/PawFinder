@@ -34,6 +34,7 @@ import {
   CheckCircle,
   User,
   Lock,
+  Users,
 } from "lucide-react";
 
 interface Application {
@@ -100,6 +101,10 @@ export default function DashboardPage() {
     member_since: "",
   };
 
+  // Placeholder arrays for unimplemented features
+  const mockDonations: { id: string; amount: number; date: string; pet_name: string }[] = [];
+  const mockVideos: { id: string; title: string; thumbnail: string; upload_date: string; status: string }[] = [];
+
   // Settings state
   const [expandedSetting, setExpandedSetting] = useState<string | null>(null);
   const [profileForm, setProfileForm] = useState({
@@ -123,6 +128,7 @@ export default function DashboardPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [applicationsLoading, setApplicationsLoading] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [petApplicationsCount, setPetApplicationsCount] = useState<Record<string, number>>({});
 
   // Fetch applications
   useEffect(() => {
@@ -137,6 +143,15 @@ export default function DashboardPage() {
         const data = await response.json();
         if (data.success && data.applications) {
           setApplications(data.applications);
+          
+          // Extract application counts from pet data
+          const countMap: Record<string, number> = {};
+          data.applications.forEach((app: Application) => {
+            if (app.pet?.application_count !== undefined) {
+              countMap[app.pet_id] = app.pet.application_count;
+            }
+          });
+          setPetApplicationsCount(countMap);
         }
       } catch (error) {
         console.error("Failed to fetch applications:", error);
@@ -343,7 +358,7 @@ export default function DashboardPage() {
                   <CardContent className="p-6 text-center">
                     <Heart className="w-8 h-8 mx-auto mb-2 text-orange-500" />
                     <div className="text-3xl font-bold text-gray-800">
-                      {mockAdoptions.length}
+                      {applications.length}
                     </div>
                     <p className="text-gray-500">我的领养</p>
                   </CardContent>
@@ -456,29 +471,53 @@ export default function DashboardPage() {
 
             {/* Application Detail Dialog */}
             <Dialog open={!!selectedApplication} onOpenChange={() => setSelectedApplication(null)}>
-              <DialogContent className="max-w-md">
+              <DialogContent className="max-w-lg">
                 <DialogHeader>
                   <DialogTitle>领养申请详情</DialogTitle>
                 </DialogHeader>
                 {selectedApplication && (
                   <div className="space-y-4">
-                    <div className="w-full h-40 rounded-lg bg-orange-100 flex items-center justify-center text-6xl overflow-hidden">
-                      {selectedApplication.pet?.images?.[0] ? (
-                        <img src={selectedApplication.pet.images[0]} alt={selectedApplication.pet.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <span>?</span>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">宠物名称</span>
-                        <span className="font-medium">{selectedApplication.pet?.name || "未知宠物"}</span>
+                    {/* Pet Image and Basic Info */}
+                    <div className="flex gap-4">
+                      <div className="w-32 h-32 rounded-lg bg-orange-100 overflow-hidden flex-shrink-0">
+                        {selectedApplication.pet?.images?.[0] ? (
+                          <img src={selectedApplication.pet.images[0]} alt={selectedApplication.pet.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-4xl">?</div>
+                        )}
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex-1 space-y-1.5">
+                        <h3 className="text-lg font-semibold">{selectedApplication.pet?.name || "未知宠物"}</h3>
+                        <p className="text-sm text-gray-500">{selectedApplication.pet?.breed || "未知品种"}</p>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          <Badge variant="outline" className="text-xs">{selectedApplication.pet?.age || "未知年龄"}</Badge>
+                          <Badge variant="outline" className="text-xs">{selectedApplication.pet?.gender === "male" ? "公" : "母"}</Badge>
+                          <Badge variant="outline" className="text-xs">{selectedApplication.pet?.size === "large" ? "大型" : selectedApplication.pet?.size === "medium" ? "中型" : "小型"}</Badge>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Applications Count - Highlight */}
+                    <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-5 h-5 text-orange-500" />
+                          <span className="text-gray-700">当前申请人数</span>
+                        </div>
+                        <div className="text-2xl font-bold text-orange-600">
+                          {petApplicationsCount[selectedApplication.pet_id] || 0} 人
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">已有这么多人提交了该宠物的领养申请</p>
+                    </div>
+                    
+                    {/* Application Info */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between py-2 border-b">
                         <span className="text-gray-500">申请时间</span>
                         <span className="font-medium">{new Date(selectedApplication.created_at).toLocaleString("zh-CN")}</span>
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex justify-between py-2 border-b">
                         <span className="text-gray-500">当前状态</span>
                         <Badge className={`${
                           selectedApplication.status === "pending" ? "bg-yellow-100 text-yellow-700" :
@@ -491,10 +530,44 @@ export default function DashboardPage() {
                            selectedApplication.status === "rejected" ? "已拒绝" : selectedApplication.status}
                         </Badge>
                       </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-500">领养费用</span>
+                        <span className="font-medium">{selectedApplication.pet?.adoption_fee === 0 ? "免费" : `¥${selectedApplication.pet?.adoption_fee}`}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-500">所在地</span>
+                        <span className="font-medium">{selectedApplication.pet?.shelter_location || "未知"}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-500">健康状况</span>
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">{selectedApplication.pet?.health_status || "健康"}</Badge>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-500">疫苗状态</span>
+                        <Badge variant="outline" className={selectedApplication.pet?.vaccination_status ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-gray-50 text-gray-500"}>
+                          {selectedApplication.pet?.vaccination_status ? "已接种" : "未接种"}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-gray-500">是否绝育</span>
+                        <Badge variant="outline" className={selectedApplication.pet?.sterilization_status ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-gray-50 text-gray-500"}>
+                          {selectedApplication.pet?.sterilization_status ? "已绝育" : "未绝育"}
+                        </Badge>
+                      </div>
+                      {selectedApplication.pet?.traits && selectedApplication.pet.traits.length > 0 && (
+                        <div className="py-2 border-b">
+                          <span className="text-gray-500">宠物特点</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {selectedApplication.pet.traits.map((trait: string, idx: number) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">{trait}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       {selectedApplication.admin_notes && (
-                        <div className="pt-2 border-t">
+                        <div className="pt-2">
                           <span className="text-gray-500">审核备注</span>
-                          <p className="mt-1 text-gray-700">{selectedApplication.admin_notes}</p>
+                          <p className="mt-1 text-gray-700 bg-gray-50 p-2 rounded">{selectedApplication.admin_notes}</p>
                         </div>
                       )}
                     </div>
