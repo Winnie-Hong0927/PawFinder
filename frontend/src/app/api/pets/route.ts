@@ -35,9 +35,33 @@ export async function GET(request: NextRequest) {
       throw new Error(`Failed to fetch pets: ${error.message}`);
     }
 
+    // 如果有宠物且有机构ID，获取机构名称
+    let petsWithInstitution = pets || [];
+    if (petsWithInstitution.length > 0) {
+      const institutionIds = petsWithInstitution
+        .map((p: any) => p.institution_id)
+        .filter((id: any) => id);
+      
+      if (institutionIds.length > 0) {
+        const { data: institutions } = await client
+          .from("institutions")
+          .select("id, name")
+          .in("id", institutionIds);
+        
+        const institutionMap = new Map(
+          (institutions || []).map((i: any) => [i.id, i.name])
+        );
+        
+        petsWithInstitution = petsWithInstitution.map((p: any) => ({
+          ...p,
+          institution_name: institutionMap.get(p.institution_id) || null
+        }));
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      pets: pets || [],
+      pets: petsWithInstitution,
       total: count || 0,
       page,
       limit,

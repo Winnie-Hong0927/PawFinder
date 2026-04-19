@@ -27,16 +27,27 @@ export async function GET(
       );
     }
 
-    // 获取申请人数
-    const { count: applicationCount } = await client
-      .from("adoption_applications")
-      .select("*", { count: "exact", head: true })
-      .eq("pet_id", id);
+    // 获取申请人数和机构名称
+    const [appCountResult, institutionResult] = await Promise.all([
+      client
+        .from("adoption_applications")
+        .select("*", { count: "exact", head: true })
+        .eq("pet_id", id),
+      pet.institution_id
+        ? client
+            .from("institutions")
+            .select("name")
+            .eq("id", pet.institution_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    const institutionName = institutionResult?.data?.name || null;
 
     return NextResponse.json({
       success: true,
-      pet,
-      application_count: applicationCount || 0,
+      pet: { ...pet, institution_name: institutionName },
+      application_count: appCountResult.count || 0,
     });
   } catch (error) {
     console.error("Get pet error:", error);
