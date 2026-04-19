@@ -495,7 +495,7 @@ export default function DashboardPage() {
 
             {/* Application Detail Dialog */}
             <Dialog open={!!selectedApplication} onOpenChange={() => setSelectedApplication(null)}>
-              <DialogContent className="max-w-lg">
+              <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>领养申请详情</DialogTitle>
                 </DialogHeader>
