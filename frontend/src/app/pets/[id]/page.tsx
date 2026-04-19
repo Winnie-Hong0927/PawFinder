@@ -413,6 +413,12 @@ export default function PetDetailPage() {
                   {speciesLabels[pet.species]}
                   {pet.breed || "混血"} · {pet.age}
                 </p>
+                {(pet as any).institution_name && (
+                  <p className="text-sm text-blue-600 mt-1 flex items-center gap-1">
+                    <Building2 className="w-3.5 h-3.5" />
+                    {(pet as any).institution_name}
+                  </p>
+                )}
               </div>
               <Badge className={cn("text-white text-xs px-2 py-0.5", statusColor)}>
                 {statusLabel}
