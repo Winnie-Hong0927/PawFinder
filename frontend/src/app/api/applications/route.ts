@@ -136,6 +136,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if user exists
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("id, name")
+      .eq("id", user_id)
+      .single();
+
+    if (userError || !userData) {
+      return NextResponse.json(
+        { success: false, error: "用户未登录或登录已过期，请重新登录" },
+        { status: 401 }
+      );
+    }
+
     const { data, error } = await supabase
       .from("adoption_applications")
       .insert({
