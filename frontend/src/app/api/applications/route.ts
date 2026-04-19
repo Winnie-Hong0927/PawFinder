@@ -10,13 +10,27 @@ export async function GET(request: NextRequest) {
     const user_id = searchParams.get("user_id");
     const institution_id = searchParams.get("institution_id");
 
+    // Get current session
+    const session = await getCurrentSession();
+    const currentUser = session?.user;
+    
+    // If not logged in, return empty
+    if (!currentUser) {
+      return NextResponse.json({ success: true, applications: [] });
+    }
+
     const supabase = getSupabaseClient();
 
-    // First get the applications
+    // First get the applications - filter by current user unless admin
     let query = supabase
       .from("adoption_applications")
       .select("*")
       .order("created_at", { ascending: false });
+
+    // Non-admin users can only see their own applications
+    if (currentUser.role !== "admin" && currentUser.role !== "institution_admin") {
+      query = query.eq("user_id", currentUser.id);
+    }
 
     if (status) {
       query = query.eq("status", status);
@@ -26,7 +40,7 @@ export async function GET(request: NextRequest) {
       query = query.eq("pet_id", pet_id);
     }
 
-    if (user_id) {
+    if (user_id && currentUser.role === "admin") {
       query = query.eq("user_id", user_id);
     }
 
@@ -128,15 +142,21 @@ export async function POST(request: NextRequest) {
     // Check if user already applied
     const { data: existingApp } = await supabase
       .from("adoption_applications")
-      .select("id")
+      .select("id, status, created_at")
       .eq("pet_id", pet_id)
       .eq("user_id", user_id)
-      .eq("status", "pending")
       .single();
 
     if (existingApp) {
+      const statusText = existingApp.status === "pending" ? "待审核" : 
+                         existingApp.status === "approved" ? "已通过" : 
+                         existingApp.status === "rejected" ? "已拒绝" : existingApp.status;
       return NextResponse.json(
-        { success: false, error: "您已提交过该宠物的领养申请" },
+        { 
+          success: false, 
+          error: `您已提交过该宠物的领养申请（当前状态：${statusText}）` ,
+          existingApplication: existingApp
+        },
         { status: 400 }
       );
     }

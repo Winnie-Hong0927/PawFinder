@@ -14,6 +14,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -34,8 +36,22 @@ import {
   Lock,
 } from "lucide-react";
 
+interface Application {
+  id: string;
+  pet_id: string;
+  pet: {
+    name: string;
+    species: string;
+    images: string[];
+  };
+  status: string;
+  created_at: string;
+  admin_notes?: string;
+}
+
 interface Adoption {
   id: string;
+  pet_id: string;
   pet: {
     name: string;
     species: string;
@@ -58,25 +74,6 @@ interface VideoRecord {
   uploaded_at: string;
   status: string;
 }
-
-const mockAdoptions: Adoption[] = [
-  {
-    id: "1",
-    pet: { name: "小白", species: "cat", images: [] },
-    adoption_date: "2024-01-15",
-    status: "active",
-  },
-];
-
-const mockDonations: Donation[] = [
-  { id: "1", type: "money", amount: "200", created_at: "2024-01-10" },
-  { id: "2", type: "goods", amount: "0", created_at: "2024-01-05" },
-];
-
-const mockVideos: VideoRecord[] = [
-  { id: "1", pet_name: "小白", uploaded_at: "2024-01-20", status: "approved" },
-  { id: "2", pet_name: "小白", uploaded_at: "2024-01-27", status: "pending" },
-];
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -121,6 +118,35 @@ export default function DashboardPage() {
     showDonations: false,
   });
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Applications state
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [applicationsLoading, setApplicationsLoading] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+
+  // Fetch applications
+  useEffect(() => {
+    if (!authUser) return;
+
+    const fetchApplications = async () => {
+      setApplicationsLoading(true);
+      try {
+        const response = await fetch("/api/applications", {
+          credentials: "include"
+        });
+        const data = await response.json();
+        if (data.success && data.applications) {
+          setApplications(data.applications);
+        }
+      } catch (error) {
+        console.error("Failed to fetch applications:", error);
+      } finally {
+        setApplicationsLoading(false);
+      }
+    };
+
+    fetchApplications();
+  }, [authUser]);
 
   // Update form when auth user changes
   useEffect(() => {
@@ -373,23 +399,40 @@ export default function DashboardPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {mockAdoptions.length > 0 ? (
+                  {applicationsLoading ? (
+                    <div className="text-center py-8">
+                      <Loader2 className="w-8 h-8 animate-spin mx-auto text-orange-500" />
+                      <p className="mt-2 text-gray-500">加载中...</p>
+                    </div>
+                  ) : applications.length > 0 ? (
                     <div className="space-y-4">
-                      {mockAdoptions.map((adoption) => (
+                      {applications.map((app) => (
                         <div
-                          key={adoption.id}
+                          key={app.id}
                           className="flex items-center gap-4 p-4 rounded-lg bg-orange-50 border border-orange-100 hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() => setSelectedApplication(app)}
                         >
-                          <div className="w-16 h-16 rounded-lg bg-orange-100 flex items-center justify-center text-3xl">
-                            🐾
+                          <div className="w-16 h-16 rounded-lg bg-orange-100 flex items-center justify-center text-3xl overflow-hidden">
+                            {app.pet?.images?.[0] ? (
+                              <img src={app.pet.images[0]} alt={app.pet.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span>?</span>
+                            )}
                           </div>
                           <div className="flex-1">
-                            <h4 className="font-semibold text-gray-800">{adoption.pet.name}</h4>
+                            <h4 className="font-semibold text-gray-800">{app.pet?.name || "未知宠物"}</h4>
                             <p className="text-sm text-gray-500">
-                              领养日期：{adoption.adoption_date}
+                              申请时间：{new Date(app.created_at).toLocaleDateString("zh-CN")}
                             </p>
-                            <Badge className="mt-1 bg-green-100 text-green-700 border-0">
-                              领养成功
+                            <Badge className={`mt-1 ${
+                              app.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                              app.status === "approved" ? "bg-green-100 text-green-700" :
+                              app.status === "rejected" ? "bg-red-100 text-red-700" :
+                              "bg-gray-100 text-gray-700"
+                            } border-0`}>
+                              {app.status === "pending" ? "待审核" :
+                               app.status === "approved" ? "已通过" :
+                               app.status === "rejected" ? "已拒绝" : app.status}
                             </Badge>
                           </div>
                           <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -410,6 +453,55 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </section>
+
+            {/* Application Detail Dialog */}
+            <Dialog open={!!selectedApplication} onOpenChange={() => setSelectedApplication(null)}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>领养申请详情</DialogTitle>
+                </DialogHeader>
+                {selectedApplication && (
+                  <div className="space-y-4">
+                    <div className="w-full h-40 rounded-lg bg-orange-100 flex items-center justify-center text-6xl overflow-hidden">
+                      {selectedApplication.pet?.images?.[0] ? (
+                        <img src={selectedApplication.pet.images[0]} alt={selectedApplication.pet.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span>?</span>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">宠物名称</span>
+                        <span className="font-medium">{selectedApplication.pet?.name || "未知宠物"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">申请时间</span>
+                        <span className="font-medium">{new Date(selectedApplication.created_at).toLocaleString("zh-CN")}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">当前状态</span>
+                        <Badge className={`${
+                          selectedApplication.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                          selectedApplication.status === "approved" ? "bg-green-100 text-green-700" :
+                          selectedApplication.status === "rejected" ? "bg-red-100 text-red-700" :
+                          "bg-gray-100 text-gray-700"
+                        } border-0`}>
+                          {selectedApplication.status === "pending" ? "待审核" :
+                           selectedApplication.status === "approved" ? "已通过" :
+                           selectedApplication.status === "rejected" ? "已拒绝" : selectedApplication.status}
+                        </Badge>
+                      </div>
+                      {selectedApplication.admin_notes && (
+                        <div className="pt-2 border-t">
+                          <span className="text-gray-500">审核备注</span>
+                          <p className="mt-1 text-gray-700">{selectedApplication.admin_notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
 
             {/* Donations */}
             <section id="donations">
