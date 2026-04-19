@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { pet_id, user_id, reason, living_condition, experience, has_other_pets, other_pets_detail, documents } = body;
+    const { pet_id, user_id, reason, living_condition, living_condition_images, experience, has_other_pets, other_pets_detail, documents } = body;
 
     if (!pet_id || !user_id) {
       return NextResponse.json(
@@ -147,6 +147,7 @@ export async function POST(request: NextRequest) {
         has_other_pets,
         other_pets_detail,
         documents: documents || [],
+        living_condition_images: living_condition_images || [],
         status: "pending",
       })
       .select()

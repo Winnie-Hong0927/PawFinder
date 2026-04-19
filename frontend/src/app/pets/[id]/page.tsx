@@ -90,6 +90,7 @@ export default function PetDetailPage() {
   const [adoptionForm, setAdoptionForm] = useState({
     reason: "",
     livingCondition: "",
+    livingConditionImages: [] as string[],
     experience: "",
     idCard: "",
   });
@@ -133,6 +134,44 @@ export default function PetDetailPage() {
     setAdoptionOpen(true);
   };
 
+  const handleLivingConditionImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newImages: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await response.json();
+        if (data.success && data.url) {
+          newImages.push(data.url);
+        }
+      } catch (error) {
+        console.error("Upload failed:", error);
+      }
+    }
+
+    if (newImages.length > 0) {
+      setAdoptionForm({
+        ...adoptionForm,
+        livingConditionImages: [...adoptionForm.livingConditionImages, ...newImages],
+      });
+    }
+  };
+
+  const removeLivingConditionImage = (index: number) => {
+    const newImages = [...adoptionForm.livingConditionImages];
+    newImages.splice(index, 1);
+    setAdoptionForm({ ...adoptionForm, livingConditionImages: newImages });
+  };
+
   const handleSubmitAdoption = async () => {
     if (!user || !pet) return;
 
@@ -167,7 +206,7 @@ export default function PetDetailPage() {
             setAdoptionOpen(false);
             setSubmitSuccess(false);
             setShowPayment(false);
-            setAdoptionForm({ reason: "", livingCondition: "", experience: "", idCard: "" });
+            setAdoptionForm({ reason: "", livingCondition: "", livingConditionImages: [], experience: "", idCard: "" });
           }, 2000);
         }
       } else {
@@ -183,7 +222,7 @@ export default function PetDetailPage() {
         setTimeout(() => {
           setAdoptionOpen(false);
           setSubmitSuccess(false);
-          setAdoptionForm({ reason: "", livingCondition: "", experience: "", idCard: "" });
+          setAdoptionForm({ reason: "", livingCondition: "", livingConditionImages: [], experience: "", idCard: "" });
         }, 2000);
       }
     } finally {
@@ -634,7 +673,7 @@ export default function PetDetailPage() {
                     setAdoptionOpen(false);
                     setSubmitSuccess(false);
                     setShowPayment(false);
-                    setAdoptionForm({ reason: "", livingCondition: "", experience: "", idCard: "" });
+                    setAdoptionForm({ reason: "", livingCondition: "", livingConditionImages: [], experience: "", idCard: "" });
                   }}
                 >
                   稍后支付
@@ -662,13 +701,51 @@ export default function PetDetailPage() {
               </div>
 
               <div>
-                <Label className="text-xs">居住环境</Label>
-                <Input
-                  value={adoptionForm.livingCondition}
-                  onChange={(e) => setAdoptionForm({ ...adoptionForm, livingCondition: e.target.value })}
-                  placeholder="如：自有住房/租房，有院子"
-                  className="mt-1 text-sm"
-                />
+                <Label className="text-xs">居住环境（可上传图片）</Label>
+                <div className="mt-1 space-y-2">
+                  <Input
+                    value={adoptionForm.livingCondition}
+                    onChange={(e) => setAdoptionForm({ ...adoptionForm, livingCondition: e.target.value })}
+                    placeholder="如：自有住房/租房，有院子"
+                    className="text-sm"
+                  />
+                  {/* 图片上传 */}
+                  <div className="flex items-center gap-2">
+                    <label className="cursor-pointer inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-md text-xs">
+                      <Upload className="w-3 h-3" />
+                      上传图片
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleLivingConditionImageUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    <span className="text-xs text-gray-500">支持jpg、png格式</span>
+                  </div>
+                  {/* 图片预览 */}
+                  {adoptionForm.livingConditionImages.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {adoptionForm.livingConditionImages.map((url, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={url}
+                            alt={`居住环境${index + 1}`}
+                            className="w-16 h-16 object-cover rounded-md border"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeLivingConditionImage(index)}
+                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
