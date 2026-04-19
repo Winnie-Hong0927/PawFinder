@@ -1,7 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { API_ENDPOINTS } from '@/lib/api-config';
 
-// 获取我的领养申请
+// 通用请求方法
+async function requestBackend<T>(
+  url: string,
+  options: RequestInit = {},
+  request: NextRequest
+): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  // 传递用户认证信息
+  const userId = request.headers.get("x-user-id");
+  const userRole = request.headers.get("x-user-role");
+  if (userId) headers['X-User-Id'] = userId;
+  if (userRole) headers['X-User-Role'] = userRole;
+
+  // 如果前端有token，也传递
+  const cookieHeader = request.headers.get("cookie") || "";
+  if (cookieHeader.includes('token=')) {
+    const match = cookieHeader.match(/token=([^;]+)/);
+    if (match) {
+      headers['Authorization'] = `Bearer ${match[1]}`;
+    }
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  return response.json();
+}
+
+// GET /api/adoptions - 获取我的领养列表
 export async function GET(request: NextRequest) {
   try {
     const userId = request.headers.get("x-user-id");
@@ -13,33 +46,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const client = getSupabaseClient();
-    
-    const { data: applications, error } = await client
-      .from("adoption_applications")
-      .select(`
-        *,
-        pets (
-          id,
-          name,
-          species,
-          breed,
-          images
-        )
-      `)
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+    const result = await requestBackend<{
+      code: number;
+      message: string;
+      data: any[];
+    }>(API_ENDPOINTS.myAdoptions, { method: 'GET' }, request);
 
-    if (error) {
-      throw new Error(`Failed to fetch applications: ${error.message}`);
+    if (result.code !== 0) {
+      return NextResponse.json(
+        { error: result.message || '获取领养列表失败' },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      applications: applications || [],
+      applications: result.data,
     });
   } catch (error) {
-    console.error("Get applications error:", error);
+    console.error("Get adoptions error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -47,7 +72,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// 创建领养申请
+// POST /api/adoptions - 创建领养申请
 export async function POST(request: NextRequest) {
   try {
     const userId = request.headers.get("x-user-id");
@@ -69,75 +94,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const client = getSupabaseClient();
-
-    // 检查宠物是否可领养
-    const { data: pet, error: petError } = await client
-      .from("pets")
-      .select("status")
-      .eq("id", pet_id)
-      .maybeSingle();
-
-    if (petError) {
-      throw new Error(`Failed to fetch pet: ${petError.message}`);
-    }
-
-    if (!pet || pet.status !== "available") {
-      return NextResponse.json(
-        { error: "Pet is not available for adoption" },
-        { status: 400 }
-      );
-    }
-
-    // 检查是否已有待处理的申请
-    const { data: existing } = await client
-      .from("adoption_applications")
-      .select("id")
-      .eq("pet_id", pet_id)
-      .eq("user_id", userId)
-      .eq("status", "pending")
-      .maybeSingle();
-
-    if (existing) {
-      return NextResponse.json(
-        { error: "You already have a pending application for this pet" },
-        { status: 400 }
-      );
-    }
-
-    // 创建申请
-    const { data, error } = await client
-      .from("adoption_applications")
-      .insert({
+    // 调用 applications API 创建申请
+    const result = await requestBackend<{
+      code: number;
+      message: string;
+      data: string;
+    }>(API_ENDPOINTS.applications, {
+      method: 'POST',
+      body: JSON.stringify({
         pet_id,
-        user_id: userId,
         reason,
         living_condition,
         experience,
-        has_other_pets: has_other_pets || false,
+        has_other_pets,
         other_pets_detail,
         documents: documents || [],
-        status: "pending",
-      })
-      .select()
-      .single();
+      }),
+    }, request);
 
-    if (error) {
-      throw new Error(`Failed to create application: ${error.message}`);
+    if (result.code !== 0) {
+      return NextResponse.json(
+        { success: false, error: result.message || '创建申请失败' },
+        { status: 400 }
+      );
     }
-
-    // 更新宠物状态为 pending
-    await client
-      .from("pets")
-      .update({ status: "pending" })
-      .eq("id", pet_id);
 
     return NextResponse.json({
       success: true,
-      application: data,
+      applicationId: result.data,
     });
   } catch (error) {
-    console.error("Create application error:", error);
+    console.error("Create adoption error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

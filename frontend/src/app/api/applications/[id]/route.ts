@@ -1,53 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { API_ENDPOINTS } from '@/lib/api-config';
 
+// 通用请求方法
+async function requestBackend<T>(
+  url: string,
+  options: RequestInit = {},
+  request: NextRequest
+): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  // 传递用户认证信息
+  const userId = request.headers.get("x-user-id");
+  const userRole = request.headers.get("x-user-role");
+  if (userId) headers['X-User-Id'] = userId;
+  if (userRole) headers['X-User-Role'] = userRole;
+
+  // 如果前端有token，也传递
+  const cookieHeader = request.headers.get("cookie") || "";
+  if (cookieHeader.includes('token=')) {
+    const match = cookieHeader.match(/token=([^;]+)/);
+    if (match) {
+      headers['Authorization'] = `Bearer ${match[1]}`;
+    }
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  return response.json();
+}
+
+// GET /api/applications/[id] - 获取申请详情
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const supabase = getSupabaseClient();
 
-    const { data, error } = await supabase
-      .from("adoption_applications")
-      .select("*")
-      .eq("id", id)
-      .single();
+    const result = await requestBackend<{
+      code: number;
+      message: string;
+      data: any;
+    }>(API_ENDPOINTS.applicationById(id), { method: 'GET' }, request);
 
-    if (error) throw error;
-
-    // Fetch related data
-    let pet = null;
-    let user = null;
-
-    if (data.pet_id) {
-      const petRes = await supabase
-        .from("pets")
-        .select("*, institutions(name)")
-        .eq("id", data.pet_id)
-        .single();
-      pet = petRes.data;
+    if (result.code !== 0) {
+      return NextResponse.json(
+        { success: false, error: result.message || '获取申请详情失败' },
+        { status: 404 }
+      );
     }
-
-    if (data.user_id) {
-      const userRes = await supabase
-        .from("users")
-        .select("id, name, email, phone")
-        .eq("id", data.user_id)
-        .single();
-      user = userRes.data;
-    }
-
-    const enrichedApplication = {
-      ...data,
-      pet,
-      user,
-    };
 
     return NextResponse.json({
       success: true,
-      application: enrichedApplication,
+      application: result.data,
     });
   } catch (error: any) {
     console.error("Get application error:", error);
@@ -58,6 +68,7 @@ export async function GET(
   }
 }
 
+// PATCH /api/applications/[id] - 更新申请状态（审核）
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -65,93 +76,36 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status, admin_notes, reviewed_by } = body;
-    const supabase = getSupabaseClient();
+    const { status, admin_notes } = body;
 
-    const updateData: any = {
-      updated_at: new Date().toISOString(),
-    };
-
-    if (status) {
-      updateData.status = status;
+    const userId = request.headers.get("x-user-id");
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
-    if (admin_notes) {
-      updateData.admin_notes = admin_notes;
+    // 调用后端审核API
+    const result = await requestBackend<{
+      code: number;
+      message: string;
+      data: any;
+    }>(API_ENDPOINTS.applicationReview(id), {
+      method: 'PUT',
+      body: JSON.stringify({ status, admin_notes }),
+    }, request);
+
+    if (result.code !== 0) {
+      return NextResponse.json(
+        { success: false, error: result.message || '更新申请失败' },
+        { status: 400 }
+      );
     }
-
-    if (status && ["approved", "rejected"].includes(status)) {
-      updateData.reviewed_by = reviewed_by;
-      updateData.reviewed_at = new Date().toISOString();
-    }
-
-    const { data, error } = await supabase
-      .from("adoption_applications")
-      .update(updateData)
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // If approved, update pet status to adopted and create adoption record
-    if (status === "approved") {
-      const { data: application } = await supabase
-        .from("adoption_applications")
-        .select("pet_id, user_id")
-        .eq("id", id)
-        .single();
-
-      if (application) {
-        // Update pet status
-        await supabase
-          .from("pets")
-          .update({ status: "adopted" })
-          .eq("id", application.pet_id);
-
-        // Create adoption record
-        await supabase
-          .from("adoptions")
-          .insert({
-            pet_id: application.pet_id,
-            user_id: application.user_id,
-            application_id: id,
-            status: "active",
-          });
-      }
-    }
-
-    // Fetch related data for the response
-    let pet = null;
-    let user = null;
-
-    if (data.pet_id) {
-      const petRes = await supabase
-        .from("pets")
-        .select("*, institutions(name)")
-        .eq("id", data.pet_id)
-        .single();
-      pet = petRes.data;
-    }
-
-    if (data.user_id) {
-      const userRes = await supabase
-        .from("users")
-        .select("id, name, email, phone")
-        .eq("id", data.user_id)
-        .single();
-      user = userRes.data;
-    }
-
-    const enrichedApplication = {
-      ...data,
-      pet,
-      user,
-    };
 
     return NextResponse.json({
       success: true,
-      application: enrichedApplication,
+      application: result.data,
     });
   } catch (error: any) {
     console.error("Update application error:", error);

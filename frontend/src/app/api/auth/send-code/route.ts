@@ -1,12 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// In-memory store for demo (in production, use Redis or database)
-const verificationCodes: Record<string, { code: string; expires: number; type: string }> = {};
-
-// Generate random 6-digit code
-function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,41 +13,41 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Check rate limit (1 code per 60 seconds per phone)
-    const existing = verificationCodes[phone];
-    if (existing && existing.expires > Date.now()) {
-      const remaining = Math.ceil((existing.expires - Date.now()) / 1000);
+    // 调用后端发送验证码API
+    const backendUrl = API_ENDPOINTS.sendCode;
+    
+    const response = await fetch(backendUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ phone, type: type || 'login' }),
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
       return NextResponse.json({
         success: false,
-        error: `请${remaining}秒后再试`,
-        remaining,
+        error: result.message || '发送失败',
+      }, { status: response.status });
+    }
+    
+    // 后端返回: { code: 0, message: 'success', data: { code } }
+    if (result.code !== 0) {
+      return NextResponse.json({
+        success: false,
+        error: result.message || '发送失败',
       });
     }
-
-    // Generate new code
-    const code = generateCode();
-    verificationCodes[phone] = {
-      code,
-      expires: Date.now() + 60000, // 60 seconds
-      type: type || "login",
-    };
-
-    // In production, integrate with SMS service (e.g., Alibaba Cloud, Tencent Cloud)
-    // For demo, we'll just return success and log the code
-    console.log(`[SMS] Verification code for ${phone}: ${code}`);
-
-    // Simulate SMS API call
-    // const smsResponse = await fetch('https://api.sms.example.com/send', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ phone, template: 'login', params: { code } }),
-    // });
-
+    
+    // 开发环境下返回验证码方便测试
+    const debugCode = process.env.NODE_ENV === 'development' ? result.data?.code : undefined;
+    
     return NextResponse.json({
       success: true,
       message: "验证码已发送",
-      // For demo purposes, return the code (remove in production!)
-      debug_code: code,
+      debug_code: debugCode,
     });
   } catch (error) {
     console.error("Send code error:", error);

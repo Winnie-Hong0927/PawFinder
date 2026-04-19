@@ -1,106 +1,101 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { getCurrentSession } from "@/lib/session";
+import { API_ENDPOINTS } from '@/lib/api-config';
 
+// 通用请求方法
+async function requestBackend<T>(
+  url: string,
+  options: RequestInit = {},
+  request: NextRequest
+): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  // 传递用户认证信息
+  const userId = request.headers.get("x-user-id");
+  const userRole = request.headers.get("x-user-role");
+  if (userId) headers['X-User-Id'] = userId;
+  if (userRole) headers['X-User-Role'] = userRole;
+
+  // 如果前端有token，也传递
+  const cookieHeader = request.headers.get("cookie") || "";
+  if (cookieHeader.includes('token=')) {
+    const match = cookieHeader.match(/token=([^;]+)/);
+    if (match) {
+      headers['Authorization'] = `Bearer ${match[1]}`;
+    }
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  return response.json();
+}
+
+// GET /api/applications - 获取申请列表
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const pet_id = searchParams.get("pet_id");
     const user_id = searchParams.get("user_id");
-    const institution_id = searchParams.get("institution_id");
-
-    // Get current session
-    const session = await getCurrentSession();
-    const currentUser = session?.user;
+    const my = searchParams.get("my");
+    const pending = searchParams.get("pending");
     
-    // If not logged in, return empty
-    if (!currentUser) {
-      return NextResponse.json({ success: true, applications: [] });
+    let backendUrl: string;
+    
+    // 我的申请
+    if (my === 'true') {
+      backendUrl = API_ENDPOINTS.myApplications;
+    }
+    // 待审核申请（管理员）
+    else if (pending === 'true') {
+      const params = new URLSearchParams();
+      if (status) params.set('status', status);
+      const page = searchParams.get("page") || "1";
+      const size = searchParams.get("size") || "20";
+      params.set('page', page);
+      params.set('size', size);
+      backendUrl = `${API_ENDPOINTS.pendingApplications}?${params.toString()}`;
+    }
+    // 通用查询
+    else {
+      const params = new URLSearchParams();
+      if (status) params.set('status', status);
+      if (pet_id) params.set('petId', pet_id);
+      if (user_id) params.set('userId', user_id);
+      backendUrl = `${API_ENDPOINTS.applications}${params.toString() ? '?' + params.toString() : ''}`;
     }
 
-    const supabase = getSupabaseClient();
+    const result = await requestBackend<{
+      code: number;
+      message: string;
+      data: any[] | { list: any[]; total: number; page: number; size: number };
+    }>(backendUrl, { method: 'GET' }, request);
 
-    // First get the applications - filter by current user unless admin
-    let query = supabase
-      .from("adoption_applications")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    // Non-admin users can only see their own applications
-    if (currentUser.role !== "admin" && currentUser.role !== "institution_admin") {
-      query = query.eq("user_id", currentUser.id);
+    if (result.code !== 0) {
+      return NextResponse.json(
+        { success: false, error: result.message || '获取申请列表失败' },
+        { status: 400 }
+      );
     }
 
-    if (status) {
-      query = query.eq("status", status);
-    }
-
-    if (pet_id) {
-      query = query.eq("pet_id", pet_id);
-    }
-
-    if (user_id && currentUser.role === "admin") {
-      query = query.eq("user_id", user_id);
-    }
-
-    const { data: applications, error } = await query;
-
-    if (error) throw error;
-
-    // Then fetch related data
-    const petIds = applications?.map(a => a.pet_id) || [];
-    const userIds = applications?.map(a => a.user_id) || [];
-
-    let pets: any = {};
-    let users: any = {};
-    let institutions: any = {};
-    let petApplicationCounts: Record<string, number> = {};
-
-    if (petIds.length > 0) {
-      const { data: petsData } = await supabase
-        .from("pets")
-        .select("*, institutions(name)")
-        .in("id", [...new Set(petIds)]);
-      
-      petsData?.forEach(p => { pets[p.id] = p; });
-      
-      // Get application count for each pet
-      const uniquePetIds = [...new Set(petIds)];
-      for (const pid of uniquePetIds) {
-        const { count } = await supabase
-          .from("adoption_applications")
-          .select("*", { count: "exact", head: true })
-          .eq("pet_id", pid);
-        petApplicationCounts[pid] = count || 0;
-      }
-    }
-
-    if (userIds.length > 0) {
-      const { data: usersData } = await supabase
-        .from("users")
-        .select("id, name, email, phone")
-        .in("id", [...new Set(userIds)]);
-      
-      usersData?.forEach(u => { users[u.id] = u; });
-    }
-
-    // Combine the data
-    const enrichedApplications = applications?.map(app => ({
-      ...app,
-      pet: pets[app.pet_id] ? { ...pets[app.pet_id], application_count: petApplicationCounts[app.pet_id] || 0 } : null,
-      user: users[app.user_id] || null,
-    })) || [];
-
-    // Filter by institution if needed
-    let result = enrichedApplications;
-    if (institution_id) {
-      result = result.filter((app: any) => app.pet?.institution_id === institution_id);
+    // 处理分页响应
+    if (pending === 'true' && result.data && typeof result.data === 'object' && 'list' in result.data) {
+      return NextResponse.json({
+        success: true,
+        applications: result.data.list,
+        total: result.data.total,
+        page: result.data.page,
+        size: result.data.size,
+      });
     }
 
     return NextResponse.json({
       success: true,
-      applications: result,
+      applications: result.data,
     });
   } catch (error: any) {
     console.error("Get applications error:", error);
@@ -111,90 +106,49 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// POST /api/applications - 创建申请
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { pet_id, reason, living_condition, living_condition_images, experience, has_other_pets, other_pets_detail, documents } = body;
 
-    // 从后端会话获取用户信息
-    const session = await getCurrentSession();
-    if (!session) {
+    const userId = request.headers.get("x-user-id");
+    if (!userId) {
       return NextResponse.json(
         { success: false, error: "用户未登录或登录已过期，请重新登录" },
         { status: 401 }
       );
     }
 
-    const user_id = session.userId;
-
-    const supabase = getSupabaseClient();
-
-    // Check if pet exists and is available
-    const { data: pet, error: petError } = await supabase
-      .from("pets")
-      .select("id, status, name")
-      .eq("id", pet_id)
-      .single();
-
-    if (petError || !pet) {
-      return NextResponse.json(
-        { success: false, error: "宠物不存在" },
-        { status: 404 }
-      );
-    }
-
-    if (pet.status !== "available") {
-      return NextResponse.json(
-        { success: false, error: "该宠物当前不可申请领养" },
-        { status: 400 }
-      );
-    }
-
-    // Check if user already applied
-    const { data: existingApp } = await supabase
-      .from("adoption_applications")
-      .select("id, status, created_at")
-      .eq("pet_id", pet_id)
-      .eq("user_id", user_id)
-      .single();
-
-    if (existingApp) {
-      const statusText = existingApp.status === "pending" ? "待审核" : 
-                         existingApp.status === "approved" ? "已通过" : 
-                         existingApp.status === "rejected" ? "已拒绝" : existingApp.status;
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: `您已提交过该宠物的领养申请（当前状态：${statusText}）` ,
-          existingApplication: existingApp
-        },
-        { status: 400 }
-      );
-    }
-
-    // Insert the application
-    const { data, error } = await supabase
-      .from("adoption_applications")
-      .insert({
+    // 调用后端创建申请
+    const result = await requestBackend<{
+      code: number;
+      message: string;
+      data: string;
+    }>(API_ENDPOINTS.applications, {
+      method: 'POST',
+      body: JSON.stringify({
         pet_id,
-        user_id,
         reason,
         living_condition,
+        living_condition_images,
         experience,
         has_other_pets,
         other_pets_detail,
         documents: documents || [],
-        living_condition_images: living_condition_images || [],
-        status: "pending",
-      })
-      .select()
-      .single();
+      }),
+    }, request);
 
-    if (error) throw error;
+    if (result.code !== 0) {
+      return NextResponse.json(
+        { success: false, error: result.message || '创建申请失败' },
+        { status: 400 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      application: data,
+      applicationId: result.data,
     });
   } catch (error: any) {
     console.error("Create application error:", error);

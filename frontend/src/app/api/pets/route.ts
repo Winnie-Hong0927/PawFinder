@@ -1,70 +1,78 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { API_ENDPOINTS } from '@/lib/api-config';
 
+// 通用请求方法
+async function requestBackend<T>(
+  url: string,
+  options: RequestInit = {},
+  request: NextRequest
+): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  // 传递用户认证信息
+  const userId = request.headers.get("x-user-id");
+  const userRole = request.headers.get("x-user-role");
+  if (userId) headers['X-User-Id'] = userId;
+  if (userRole) headers['X-User-Role'] = userRole;
+
+  // 如果前端有token，也传递
+  const cookieHeader = request.headers.get("cookie") || "";
+  if (cookieHeader.includes('token=')) {
+    const match = cookieHeader.match(/token=([^;]+)/);
+    if (match) {
+      headers['Authorization'] = `Bearer ${match[1]}`;
+    }
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  return response.json();
+}
+
+// GET /api/pets - 获取宠物列表
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    
+    // 构造后端请求参数
+    const params = new URLSearchParams();
     const species = searchParams.get("species");
     const size = searchParams.get("size");
-    const gender = searchParams.get("gender");
     const status = searchParams.get("status") || "available";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "12");
+    
+    if (species) params.set('species', species);
+    if (size) params.set('size', size);
+    params.set('status', status);
+    params.set('page', String(page));
+    params.set('size', String(limit));
 
-    const client = getSupabaseClient();
-    let query = client
-      .from("pets")
-      .select("*", { count: "exact" })
-      .eq("status", status)
-      .order("created_at", { ascending: false })
-      .range((page - 1) * limit, page * limit - 1);
+    const backendUrl = `${API_ENDPOINTS.pets}?${params.toString()}`;
+    const result = await requestBackend<{
+      code: number;
+      message: string;
+      data: { list: any[]; total: number; page: number; size: number };
+    }>(backendUrl, { method: 'GET' }, request);
 
-    if (species) {
-      query = query.eq("species", species);
-    }
-    if (size) {
-      query = query.eq("size", size);
-    }
-    if (gender) {
-      query = query.eq("gender", gender);
-    }
-
-    const { data: pets, error, count } = await query;
-
-    if (error) {
-      throw new Error(`Failed to fetch pets: ${error.message}`);
-    }
-
-    // 如果有宠物且有机构ID，获取机构名称
-    let petsWithInstitution = pets || [];
-    if (petsWithInstitution.length > 0) {
-      const institutionIds = petsWithInstitution
-        .map((p: any) => p.institution_id)
-        .filter((id: any) => id);
-      
-      if (institutionIds.length > 0) {
-        const { data: institutions } = await client
-          .from("institutions")
-          .select("id, name")
-          .in("id", institutionIds);
-        
-        const institutionMap = new Map(
-          (institutions || []).map((i: any) => [i.id, i.name])
-        );
-        
-        petsWithInstitution = petsWithInstitution.map((p: any) => ({
-          ...p,
-          institution_name: institutionMap.get(p.institution_id) || null
-        }));
-      }
+    if (result.code !== 0) {
+      return NextResponse.json(
+        { error: result.message || '获取宠物列表失败' },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      pets: petsWithInstitution,
-      total: count || 0,
-      page,
-      limit,
+      pets: result.data.list,
+      total: result.data.total,
+      page: result.data.page,
+      limit: result.data.size,
     });
   } catch (error) {
     console.error("Get pets error:", error);
@@ -75,6 +83,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// POST /api/pets - 创建宠物
 export async function POST(request: NextRequest) {
   try {
     const userId = request.headers.get("x-user-id");
@@ -86,46 +95,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查是否为管理员
-    const client = getSupabaseClient();
-    const { data: admin } = await client
-      .from("users")
-      .select("role, institution_id")
-      .eq("id", userId)
-      .maybeSingle();
-
-    // 允许 sysadmin 或 institution_admin 创建宠物
-    if (!admin || (admin.role !== "admin" && admin.role !== "institution_admin" && admin.role !== "sysadmin")) {
-      return NextResponse.json(
-        { error: "权限不足，只有管理员可以创建宠物" },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
+    const backendUrl = API_ENDPOINTS.pets;
     
-    // 如果是机构管理员，自动关联机构ID
-    if (admin.role === "institution_admin" && admin.institution_id) {
-      body.institution_id = admin.institution_id;
-    }
-    
-    const { data, error } = await client
-      .from("pets")
-      .insert({
-        ...body,
-        created_by: userId,
-        status: body.status || "available",
-      })
-      .select()
-      .single();
+    const result = await requestBackend<{
+      code: number;
+      message: string;
+      data: string;
+    }>(backendUrl, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, request);
 
-    if (error) {
-      throw new Error(`Failed to create pet: ${error.message}`);
+    if (result.code !== 0) {
+      return NextResponse.json(
+        { error: result.message || '创建宠物失败' },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      pet: data,
+      petId: result.data,
     });
   } catch (error) {
     console.error("Create pet error:", error);

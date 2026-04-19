@@ -1,52 +1,77 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { getCurrentSession } from "@/lib/session";
+import { API_ENDPOINTS } from '@/lib/api-config';
 
+// 通用请求方法
+async function requestBackend<T>(
+  url: string,
+  options: RequestInit = {},
+  request: NextRequest
+): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  // 传递用户认证信息
+  const userId = request.headers.get("x-user-id");
+  const userRole = request.headers.get("x-user-role");
+  if (userId) headers['X-User-Id'] = userId;
+  if (userRole) headers['X-User-Role'] = userRole;
+
+  // 如果前端有token，也传递
+  const cookieHeader = request.headers.get("cookie") || "";
+  if (cookieHeader.includes('token=')) {
+    const match = cookieHeader.match(/token=([^;]+)/);
+    if (match) {
+      headers['Authorization'] = `Bearer ${match[1]}`;
+    }
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  return response.json();
+}
+
+// GET /api/auth/me - 获取当前用户信息
 export async function GET(request: NextRequest) {
   try {
-    // 从会话获取用户信息
-    const session = await getCurrentSession();
+    const userId = request.headers.get("x-user-id");
     
-    if (!session) {
+    if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    const client = getSupabaseClient();
-    
-    const { data: user, error } = await client
-      .from("users")
-      .select("*")
-      .eq("id", session.userId)
-      .maybeSingle();
+    const result = await requestBackend<{
+      code: number;
+      message: string;
+      data: any;
+    }>(API_ENDPOINTS.userInfo, { method: 'GET' }, request);
 
-    if (error) {
-      throw new Error(`Failed to get user: ${error.message}`);
-    }
-
-    if (!user) {
+    if (result.code !== 0) {
       return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
+        { error: result.message || '获取用户信息失败' },
+        { status: 401 }
       );
     }
 
     return NextResponse.json({
       success: true,
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        phone: user.phone,
-        role: user.role,
-        institution_id: user.institution_id,
-        avatar_url: user.avatar_url,
-        bio: user.bio,
-        address: user.address,
-        adopter_status: user.adopter_status,
-        id_card_number: user.id_card_number ? "***" + user.id_card_number.slice(-4) : null,
+        id: result.data.id,
+        email: result.data.email,
+        name: result.data.name,
+        phone: result.data.phone,
+        role: result.data.role,
+        institution_id: result.data.institution_id,
+        avatar_url: result.data.avatar_url,
+        bio: result.data.bio,
+        address: result.data.address,
+        adopter_status: result.data.adopter_status,
       },
     });
   } catch (error) {
@@ -58,25 +83,22 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// PUT /api/auth/me - 更新当前用户信息
 export async function PUT(request: NextRequest) {
   try {
-    // 从会话获取用户信息
-    const session = await getCurrentSession();
+    const userId = request.headers.get("x-user-id");
     
-    if (!session) {
+    if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
-    
-    const userId = session.userId;
 
     const body = await request.json();
-    const client = getSupabaseClient();
 
     // 只允许更新特定字段
-    const allowedFields = ["name", "phone", "avatar_url", "bio", "address"];
+    const allowedFields = ["name", "email", "avatar_url", "bio", "address"];
     const updateData: Record<string, string | null> = {};
     
     for (const field of allowedFields) {
@@ -85,31 +107,39 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    updateData.updated_at = new Date().toISOString();
+    const result = await requestBackend<{
+      code: number;
+      message: string;
+    }>(API_ENDPOINTS.updateUser, {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+    }, request);
 
-    const { data, error } = await client
-      .from("users")
-      .update(updateData)
-      .eq("id", userId)
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to update user: ${error.message}`);
+    if (result.code !== 0) {
+      return NextResponse.json(
+        { error: result.message || '更新用户信息失败' },
+        { status: 400 }
+      );
     }
+
+    // 重新获取用户信息
+    const userResult = await requestBackend<{
+      code: number;
+      data: any;
+    }>(API_ENDPOINTS.userInfo, { method: 'GET' }, request);
 
     return NextResponse.json({
       success: true,
       user: {
-        id: data.id,
-        email: data.email,
-        name: data.name,
-        phone: data.phone,
-        role: data.role,
-        institution_id: data.institution_id,
-        avatar_url: data.avatar_url,
-        bio: data.bio,
-        address: data.address,
+        id: userResult.data.id,
+        email: userResult.data.email,
+        name: userResult.data.name,
+        phone: userResult.data.phone,
+        role: userResult.data.role,
+        institution_id: userResult.data.institution_id,
+        avatar_url: userResult.data.avatar_url,
+        bio: userResult.data.bio,
+        address: userResult.data.address,
       },
     });
   } catch (error) {

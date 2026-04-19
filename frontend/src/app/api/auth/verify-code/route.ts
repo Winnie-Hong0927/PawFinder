@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createSession, getSessionCookie } from '@/lib/session';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 export async function POST(request: Request) {
   try {
-    const { phone, code } = await request.json();
+    const { phone, code, name } = await request.json();
     
     if (!phone || !code) {
       return NextResponse.json(
@@ -12,94 +12,62 @@ export async function POST(request: Request) {
       );
     }
     
-    // 验证验证码（测试环境接受任意6位数字）
-    if (code !== '123456' && code.length !== 6) {
+    // 调用后端验证API
+    const backendUrl = API_ENDPOINTS.verifyCode;
+    
+    const response = await fetch(backendUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ phone, code, name }),
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
       return NextResponse.json(
-        { success: false, error: '验证码错误' },
+        { success: false, error: result.message || '验证失败' },
+        { status: response.status }
+      );
+    }
+    
+    // 后端返回: { code: 0, message: 'success', data: { token, userId, user } }
+    if (result.code !== 0) {
+      return NextResponse.json(
+        { success: false, error: result.message || '验证失败' },
         { status: 400 }
       );
     }
     
-    // 导入 Supabase 客户端
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabaseUrl = process.env.COZE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.COZE_SUPABASE_SERVICE_ROLE_KEY || process.env.COZE_SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_KEY;
+    const { token, userId, user } = result.data;
     
-    if (!supabaseUrl || !supabaseKey) {
-      // 返回错误，让前端知道配置问题
-      return NextResponse.json(
-        { success: false, error: '数据库配置缺失，请联系管理员' },
-        { status: 500 }
-      );
-    }
-    
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    // 查找或创建用户
-    let { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('phone', phone)
-      .single();
-    
-    if (error || !user) {
-      // 自动注册新用户（使用手机号生成虚拟邮箱）
-      const virtualEmail = `phone_${phone}@pawfinder.local`;
-      const { data: newUser, error: insertError } = await supabase
-        .from('users')
-        .insert({
-          phone,
-          email: virtualEmail,
-          name: `用户${phone.slice(-4)}`,
-          role: 'user'
-        })
-        .select()
-        .single();
-      
-      if (insertError || !newUser) {
-        return NextResponse.json(
-          { success: false, error: '用户注册失败，请稍后重试' },
-          { status: 500 }
-        );
-      }
-      user = newUser;
-    }
-    
-    // 创建会话
-    const sessionId = await createSession(user.id, {
-      id: user.id,
-      phone: user.phone,
-      name: user.name,
-      role: user.role,
-      email: user.email,
-      institution_id: user.institution_id
-    });
-    
-    // 构建响应
-    const response = NextResponse.json({
+    // 构建前端响应
+    const nextResponse = NextResponse.json({
       success: true,
       message: '登录成功',
       user: {
-        id: user.id,
+        id: userId,
         phone: user.phone,
         name: user.name,
         role: user.role,
-        email: user.email,
-        institution_id: user.institution_id
+        avatar_url: user.avatar_url,
+        institution_id: user.institution_id,
       }
     });
     
-    // 设置会话 cookie
-    response.cookies.set({
-      name: 'session_id',
-      value: sessionId,
+    // 设置 token cookie（使用后端返回的 JWT）
+    nextResponse.cookies.set({
+      name: 'token',
+      value: token,
       httpOnly: true,
       path: '/',
-      maxAge: 24 * 60 * 60, // 24小时
-      sameSite: 'lax'
+      maxAge: 7 * 24 * 60 * 60, // 7天
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
     });
     
-    return response;
+    return nextResponse;
   } catch (error) {
     console.error('登录错误:', error);
     return NextResponse.json(
