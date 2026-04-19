@@ -13,24 +13,18 @@ spring:
           uri: http://localhost:8081
           predicates:
             - Path=/api/user/**
-          filters:
-            - StripPrefix=1
 
         # Pet Service
         - id: pet-service
           uri: http://localhost:8082
           predicates:
             - Path=/api/pet/**
-          filters:
-            - StripPrefix=1
 
         # Adoption Service
         - id: adoption-service
           uri: http://localhost:8083
           predicates:
             - Path=/api/adoption/**
-          filters:
-            - StripPrefix=1
 
         # Swagger UI
         - id: swagger-user

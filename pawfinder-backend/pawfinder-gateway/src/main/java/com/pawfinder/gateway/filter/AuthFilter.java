@@ -26,12 +26,11 @@ public class AuthFilter implements GlobalFilter, Ordered {
     private String jwtSecret;
 
     private static final List<String> WHITE_LIST = List.of(
-            "/api/auth/send-code",
-            "/api/auth/verify-code",
-            "/api/pets",
-            "/api/pets/",
-            "/api/institutions",
-            "/api/institutions/",
+            "/api/user/v1/auth/send-code",
+            "/api/user/v1/auth/verify-code",
+            "/api/pet/v1/pets",
+            "/api/pet/v1/pets/",
+            "/api/institution",
             "/swagger-ui",
             "/v3/api-docs"
     );

@@ -23,7 +23,7 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
-      id-type: assign_string
+      id-type: ASSIGN_UUID
       logic-delete-field: deletedAt
       logic-delete-value: "NOW()"
       logic-not-delete-value: "NULL"
