@@ -58,6 +58,7 @@ export default function AdminPage() {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [editUploadedImages, setEditUploadedImages] = useState<string[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, petId: "", petName: "" });
 
   // Redirect if not admin
   useEffect(() => {
