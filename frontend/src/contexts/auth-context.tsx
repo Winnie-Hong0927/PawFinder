@@ -11,6 +11,10 @@ interface User {
   institution_id?: string;
   avatar_url?: string;
   adopter_status?: "pending" | "approved" | "rejected";
+  member_since?: string;
+  bio?: string;
+  address?: string;
+  id_card_number?: string;
 }
 
 interface AuthContextType {

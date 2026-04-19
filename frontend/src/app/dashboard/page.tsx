@@ -41,9 +41,21 @@ interface Application {
   id: string;
   pet_id: string;
   pet: {
+    id: string;
     name: string;
     species: string;
+    breed: string;
+    age: string;
+    gender: string;
+    size: string;
     images: string[];
+    adoption_fee: number;
+    shelter_location: string;
+    health_status: string;
+    vaccination_status: boolean;
+    sterilization_status: boolean;
+    traits: string[];
+    application_count?: number;
   };
   status: string;
   created_at: string;
@@ -54,9 +66,21 @@ interface Adoption {
   id: string;
   pet_id: string;
   pet: {
+    id: string;
     name: string;
     species: string;
+    breed: string;
+    age: string;
+    gender: string;
+    size: string;
     images: string[];
+    adoption_fee: number;
+    shelter_location: string;
+    health_status: string;
+    vaccination_status: boolean;
+    sterilization_status: boolean;
+    traits: string[];
+    application_count?: number;
   };
   adoption_date: string;
   status: string;
