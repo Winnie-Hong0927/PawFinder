@@ -3,38 +3,70 @@ import crypto from 'crypto';
 
 // 支付宝配置
 const ALIPAY_CONFIG = {
-  appId: process.env.ALIPAY_APP_ID || '2021000000000000',
-  privateKey: process.env.ALIPAY_PRIVATE_KEY || '',
-  alipayPublicKey: process.env.ALIPAY_PUBLIC_KEY || '',
+  appId: process.env.ALIPAY_APP_ID || '',
+  privateKey: formatPrivateKey(process.env.ALIPAY_PRIVATE_KEY || ''),
+  alipayPublicKey: formatPublicKey(process.env.ALIPAY_PUBLIC_KEY || ''),
   gateway: process.env.ALIPAY_GATEWAY || 'https://openapi-sandbox.dl.alipaydev.com/gateway.do',
   returnUrl: process.env.ALIPAY_RETURN_URL || 'http://localhost:5000',
 };
 
+// 格式化私钥（添加PEM头尾如果缺失）
+function formatPrivateKey(key: string): string {
+  if (!key) return '';
+  if (key.includes('-----BEGIN')) return key;
+  return `-----BEGIN PRIVATE KEY-----\n${key}\n-----END PRIVATE KEY-----`;
+}
+
+// 格式化公钥（添加PEM头尾如果缺失）
+function formatPublicKey(key: string): string {
+  if (!key) return '';
+  if (key.includes('-----BEGIN')) return key;
+  return `-----BEGIN PUBLIC KEY-----\n${key}\n-----END PUBLIC KEY-----`;
+}
+
 // RSA2签名函数
-function sign(params: Record<string, string>, privateKey: string): string {
-  const signString = Object.keys(params)
-    .sort()
-    .map(key => `${key}=${params[key]}`)
-    .join('&');
+function sign(params: Record<string, string>): string | null {
+  if (!ALIPAY_CONFIG.privateKey) {
+    console.log('Missing private key');
+    return null;
+  }
   
-  const signcrypto = crypto.createSign('RSA-SHA256');
-  signcrypto.update(signString);
-  return signcrypto.sign(privateKey, 'base64');
+  try {
+    const signString = Object.keys(params)
+      .sort()
+      .map(key => `${key}=${params[key]}`)
+      .join('&');
+    
+    const sign = crypto.createSign('RSA-SHA256');
+    sign.update(signString);
+    return sign.sign(ALIPAY_CONFIG.privateKey, 'base64');
+  } catch (error) {
+    console.error('签名失败:', error);
+    return null;
+  }
 }
 
 // 验证签名
-function verifySign(params: Record<string, string>, alipayPublicKey: string): boolean {
-  const sign = params.sign;
-  delete params.sign;
+function verifySign(params: Record<string, string>): boolean {
+  const signStr = params.sign;
+  if (!signStr || !ALIPAY_CONFIG.alipayPublicKey) {
+    return false;
+  }
   
-  const verifyString = Object.keys(params)
-    .sort()
-    .map(key => `${key}=${params[key]}`)
-    .join('&');
-  
-  const verifycrypto = crypto.createVerify('RSA-SHA256');
-  verifycrypto.update(verifyString);
-  return verifycrypto.verify(alipayPublicKey, sign, 'base64');
+  try {
+    delete params.sign;
+    const verifyString = Object.keys(params)
+      .sort()
+      .map(key => `${key}=${params[key]}`)
+      .join('&');
+    
+    const verify = crypto.createVerify('RSA-SHA256');
+    verify.update(verifyString);
+    return verify.verify(ALIPAY_CONFIG.alipayPublicKey, signStr, 'base64');
+  } catch (error) {
+    console.error('验签失败:', error);
+    return false;
+  }
 }
 
 // 创建支付订单
@@ -82,14 +114,19 @@ export async function POST(request: NextRequest) {
         body: orderBody || subject,
         product_code: 'QUICK_WAP_WAY',
         quit_url: ALIPAY_CONFIG.returnUrl,
-        passback_params: businessParams,
+        passback_params: encodeURIComponent(businessParams),
       }),
     };
 
     // 添加签名
-    if (ALIPAY_CONFIG.privateKey) {
-      params.sign = sign(params, ALIPAY_CONFIG.privateKey);
+    const signature = sign(params);
+    if (!signature) {
+      return NextResponse.json({
+        success: false,
+        error: '签名失败，请检查配置',
+      }, { status: 500 });
     }
+    params.sign = signature;
 
     // 构建表单
     const formHtml = `
@@ -153,14 +190,19 @@ export async function GET(request: NextRequest) {
         body: subject,
         product_code: 'QUICK_WAP_WAY',
         quit_url: ALIPAY_CONFIG.returnUrl,
-        passback_params: businessParams,
+        passback_params: encodeURIComponent(businessParams),
       }),
     };
 
     // 添加签名
-    if (ALIPAY_CONFIG.privateKey) {
-      params.sign = sign(params, ALIPAY_CONFIG.privateKey);
+    const signature = sign(params);
+    if (!signature) {
+      return NextResponse.json({
+        success: false,
+        error: '签名失败，请检查配置',
+      }, { status: 500 });
     }
+    params.sign = signature;
 
     // 构建重定向URL
     const redirectUrl = `${ALIPAY_CONFIG.gateway}?${Object.keys(params)

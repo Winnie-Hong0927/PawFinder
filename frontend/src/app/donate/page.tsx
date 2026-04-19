@@ -54,6 +54,7 @@ export default function DonatePage() {
   const [customAmount, setCustomAmount] = useState("");
   const [showContactModal, setShowContactModal] = useState(false);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
+  const [donating, setDonating] = useState(false);
 
   useEffect(() => {
     fetchCampaigns();
@@ -70,6 +71,47 @@ export default function DonatePage() {
       console.error("Failed to fetch campaigns:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDonate = async () => {
+    const amount = customAmount || selectedAmount;
+    if (!amount || parseFloat(amount) <= 0) {
+      alert("请选择或输入捐赠金额");
+      return;
+    }
+
+    setDonating(true);
+    try {
+      const outTradeNo = `DONATE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const response = await fetch(
+        `/api/payment?outTradeNo=${outTradeNo}&totalAmount=${amount}&subject=爱心捐赠&body=感谢您的爱心捐赠&type=donate`
+      );
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        // 如果是表单格式，提交表单到支付宝
+        if (data.data.form) {
+          const formContainer = document.createElement("div");
+          formContainer.innerHTML = data.data.form;
+          const form = formContainer.querySelector("form");
+          if (form) {
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+          }
+        } else if (data.data.redirectUrl) {
+          // 如果是重定向URL，跳转到支付宝
+          window.location.href = data.data.redirectUrl;
+        }
+      } else {
+        alert("发起捐赠失败，请稍后重试");
+      }
+    } catch (error) {
+      console.error("Donation error:", error);
+      alert("捐赠请求失败，请稍后重试");
+    } finally {
+      setDonating(false);
     }
   };
 
@@ -229,6 +271,7 @@ export default function DonatePage() {
                       size="lg"
                       className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold shadow-md"
                       disabled={!selectedAmount && !customAmount}
+                      onClick={handleDonate}
                     >
                       <Heart className="w-5 h-5 mr-2" />
                       立即捐赠
