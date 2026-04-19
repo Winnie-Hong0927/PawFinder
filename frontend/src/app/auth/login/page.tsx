@@ -68,11 +68,14 @@ export default function LoginPage() {
         setCountdown(60);
       } else {
         setError(data.error || "发送失败，请稍后重试");
+        // If rate limited, use the remaining time from API
+        if (data.remaining) {
+          setCountdown(data.remaining);
+        }
       }
     } catch {
-      // For demo purposes, proceed anyway
-      setStep("code");
-      setCountdown(60);
+      // Network error
+      setError("网络错误，请检查网络连接后重试");
     } finally {
       setSendingCode(false);
     }

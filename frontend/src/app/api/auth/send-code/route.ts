@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: false,
         error: `请${remaining}秒后再试`,
+        remaining,
       });
     }
 
