@@ -70,9 +70,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (institution.status !== "approved") {
+    if (institution.status !== "verified") {
       return NextResponse.json(
-        { success: false, error: "机构尚未通过审核" },
+        { success: false, error: "机构尚未通过审核，请等待系统管理员审核通过后再申请" },
         { status: 400 }
       );
     }

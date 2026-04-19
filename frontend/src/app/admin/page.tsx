@@ -17,7 +17,8 @@ import {
   Settings, Building2, Users, PawPrint, Heart, Video,
   CheckCircle, XCircle, Plus, Eye, Trash2, Edit,
   LogOut, Bell, Shield, UserCog, Clock, Loader2,
-  FileText, Mail, Phone, MapPin, Building, AlertCircle
+  FileText, Mail, Phone, MapPin, Building, AlertCircle,
+  ChevronLeft, ChevronRight, X
 } from "lucide-react";
 
 interface Institution {
@@ -29,6 +30,7 @@ interface Institution {
   address: string;
   license_url: string;
   status: string;
+  verified_at: string;
   created_at: string;
 }
 
@@ -54,8 +56,17 @@ interface Pet {
   name: string;
   species: string;
   breed: string;
+  gender: string;
+  age: string;
+  size: string;
+  weight: number;
   images: string[];
+  description: string;
+  traits: string[];
+  health_status: string;
   status: string;
+  shelter_name: string;
+  shelter_address: string;
   created_at: string;
 }
 
@@ -94,6 +105,10 @@ export default function AdminPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<InstitutionAdminRequest | null>(null);
+
+  // Pet preview state
+  const [previewPet, setPreviewPet] = useState<Pet | null>(null);
+  const [previewImageIndex, setPreviewImageIndex] = useState(0);
 
   // Redirect based on role
   useEffect(() => {
@@ -174,11 +189,11 @@ export default function AdminPage() {
       const res = await fetch(`/api/institutions/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "approved", verified_by: user?.id }),
+        body: JSON.stringify({ status: "verified", verified_by: user?.id }),
       });
       const data = await res.json();
       if (data.success) {
-        setInstitutions(institutions.map(i => i.id === id ? { ...i, status: "approved" } : i));
+        setInstitutions(institutions.map(i => i.id === id ? { ...i, status: "verified", verified_at: new Date().toISOString() } : i));
       }
     } catch (error) {
       alert("审核失败");
@@ -222,10 +237,25 @@ export default function AdminPage() {
     }
   };
 
-  // Stats
+  // Stats - only count verified/approved items
+  const verifiedInstitutions = institutions.filter(i => i.status === "verified");
+  const verifiedAdmins = adminRequests.filter(r => r.status === "approved");
   const pendingInstitutions = institutions.filter(i => i.status === "pending");
   const pendingRequests = adminRequests.filter(r => r.status === "pending");
   const pendingApps = applications.filter(a => a.status === "pending");
+
+  // Get status text
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "verified": return "已认证";
+      case "approved": return "已通过";
+      case "pending": return "待审核";
+      case "rejected": return "已拒绝";
+      case "available": return "可领养";
+      case "adopted": return "已领养";
+      default: return status;
+    }
+  };
 
   if (authLoading || loading) {
     return (
@@ -271,9 +301,9 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* Quick Stats - 3 cards for sysadmin */}
       <div className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           {isSysAdmin && (
             <>
               <Card className="border-0 shadow-md">
@@ -283,7 +313,7 @@ export default function AdminPage() {
                       <Building2 className="w-5 h-5 text-amber-600" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-gray-800">{institutions.length}</p>
+                      <p className="text-2xl font-bold text-gray-800">{verifiedInstitutions.length}</p>
                       <p className="text-xs text-gray-500">机构总数</p>
                     </div>
                   </div>
@@ -296,8 +326,8 @@ export default function AdminPage() {
                       <UserCog className="w-5 h-5 text-blue-600" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-gray-800">{pendingRequests.length}</p>
-                      <p className="text-xs text-gray-500">待审管理员</p>
+                      <p className="text-2xl font-bold text-gray-800">{verifiedAdmins.length}</p>
+                      <p className="text-xs text-gray-500">管理员总数</p>
                     </div>
                   </div>
                 </CardContent>
@@ -317,19 +347,6 @@ export default function AdminPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-md">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center">
-                  <Heart className="w-5 h-5 text-rose-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-gray-800">{pendingApps.length}</p>
-                  <p className="text-xs text-gray-500">待审领养</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
 
@@ -340,6 +357,7 @@ export default function AdminPage() {
               <TabsTrigger value="institutions" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-lg px-4">
                 <Building2 className="w-4 h-4" />
                 <span>机构管理</span>
+                {pendingInstitutions.length > 0 && <Badge className="ml-1 bg-red-500 text-white text-xs">{pendingInstitutions.length}</Badge>}
               </TabsTrigger>
             )}
             {isSysAdmin && (
@@ -351,13 +369,15 @@ export default function AdminPage() {
             )}
             <TabsTrigger value="pets" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-lg px-4">
               <PawPrint className="w-4 h-4" />
-              <span>宠物管理</span>
+              <span>宠物列表</span>
             </TabsTrigger>
-            <TabsTrigger value="adoptions" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-lg px-4">
-              <Heart className="w-4 h-4" />
-              <span>领养审核</span>
-              {pendingApps.length > 0 && <Badge className="ml-1 bg-red-500 text-white text-xs">{pendingApps.length}</Badge>}
-            </TabsTrigger>
+            {!isSysAdmin && (
+              <TabsTrigger value="adoptions" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-lg px-4">
+                <Heart className="w-4 h-4" />
+                <span>领养审核</span>
+                {pendingApps.length > 0 && <Badge className="ml-1 bg-red-500 text-white text-xs">{pendingApps.length}</Badge>}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Institution Management - SysAdmin Only */}
@@ -397,7 +417,7 @@ export default function AdminPage() {
                           </div>
                           <div className="space-y-2">
                             <Label>联系邮箱</Label>
-                            <Input type="email" value={createInstitutionForm.contact_email} onChange={e => setCreateInstitutionForm({ ...createInstitutionForm, contact_email: e.target.value })} placeholder="请输入联系邮箱" />
+                            <Input value={createInstitutionForm.contact_email} onChange={e => setCreateInstitutionForm({ ...createInstitutionForm, contact_email: e.target.value })} placeholder="请输入联系邮箱" />
                           </div>
                         </div>
                         <div className="space-y-2">
@@ -405,13 +425,13 @@ export default function AdminPage() {
                           <Input value={createInstitutionForm.address} onChange={e => setCreateInstitutionForm({ ...createInstitutionForm, address: e.target.value })} placeholder="请输入机构地址" />
                         </div>
                         <div className="space-y-2">
-                          <Label>营业执照URL</Label>
+                          <Label>营业执照 URL</Label>
                           <Input value={createInstitutionForm.license_url} onChange={e => setCreateInstitutionForm({ ...createInstitutionForm, license_url: e.target.value })} placeholder="请输入营业执照图片URL" />
                         </div>
                       </div>
                       <DialogFooter>
                         <Button variant="outline" onClick={() => setCreateInstitutionOpen(false)}>取消</Button>
-                        <Button className="bg-orange-500 hover:bg-orange-600" onClick={handleCreateInstitution}>创建</Button>
+                        <Button className="bg-gradient-to-r from-orange-500 to-amber-500" onClick={handleCreateInstitution}>确认添加</Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
@@ -432,34 +452,34 @@ export default function AdminPage() {
                       {institutions.map(inst => (
                         <TableRow key={inst.id} className="hover:bg-orange-50/50">
                           <TableCell className="font-medium text-gray-800">{inst.name}</TableCell>
-                          <TableCell className="text-gray-600">
+                          <TableCell className="text-gray-600 text-sm">
                             <div className="flex flex-col">
-                              <span>{inst.contact_phone || "-"}</span>
-                              <span className="text-xs text-gray-400">{inst.contact_email || "-"}</span>
+                              <span>{inst.contact_phone}</span>
+                              <span className="text-gray-400">{inst.contact_email}</span>
                             </div>
                           </TableCell>
-                          <TableCell className="text-gray-500 text-sm">{inst.address || "-"}</TableCell>
+                          <TableCell className="text-gray-500 text-sm max-w-[200px] truncate">{inst.address}</TableCell>
                           <TableCell>
-                            <Badge className={inst.status === "approved" ? "bg-emerald-500" : inst.status === "pending" ? "bg-amber-500" : "bg-gray-500"}>
-                              {inst.status === "approved" ? "已认证" : inst.status === "pending" ? "待审核" : "已拒绝"}
+                            <Badge className={
+                              inst.status === "verified" ? "bg-emerald-500" :
+                              inst.status === "pending" ? "bg-amber-500" : "bg-gray-500"
+                            }>
+                              {getStatusText(inst.status)}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-gray-500 text-sm">{new Date(inst.created_at).toLocaleDateString()}</TableCell>
                           <TableCell>
-                            {inst.status === "pending" && (
+                            {inst.status === "pending" ? (
                               <div className="flex items-center gap-2">
                                 <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => handleApproveInstitution(inst.id)}>
                                   <CheckCircle className="w-4 h-4 mr-1" />通过
                                 </Button>
                                 <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleRejectInstitution(inst.id)}>
-                                  <XCircle className="w-4 h-4" />
+                                  <XCircle className="w-4 h-4 mr-1" />拒绝
                                 </Button>
                               </div>
-                            )}
-                            {inst.status === "approved" && (
-                              <Button size="sm" variant="ghost" className="text-gray-500">
-                                <Eye className="w-4 h-4" />
-                              </Button>
+                            ) : (
+                              <span className="text-gray-400 text-sm">{inst.verified_at ? `审核于 ${new Date(inst.verified_at).toLocaleDateString()}` : "-"}</span>
                             )}
                           </TableCell>
                         </TableRow>
@@ -485,7 +505,7 @@ export default function AdminPage() {
                 <CardHeader>
                   <CardTitle className="text-gray-800 flex items-center gap-2">
                     <UserCog className="w-5 h-5 text-orange-500" />
-                    机构管理员申请
+                    管理员申请列表
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -495,8 +515,8 @@ export default function AdminPage() {
                         <TableHead className="text-gray-600 font-semibold">申请人</TableHead>
                         <TableHead className="text-gray-600 font-semibold">所属机构</TableHead>
                         <TableHead className="text-gray-600 font-semibold">联系方式</TableHead>
-                        <TableHead className="text-gray-600 font-semibold">状态</TableHead>
                         <TableHead className="text-gray-600 font-semibold">申请时间</TableHead>
+                        <TableHead className="text-gray-600 font-semibold">状态</TableHead>
                         <TableHead className="text-gray-600 font-semibold">操作</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -506,47 +526,54 @@ export default function AdminPage() {
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <Avatar className="w-8 h-8 bg-orange-100">
-                                <AvatarFallback className="text-orange-600 text-sm">{req.name?.[0]}</AvatarFallback>
+                                <AvatarFallback className="text-orange-600 font-medium">{req.name?.[0]}</AvatarFallback>
                               </Avatar>
-                              <span className="font-medium text-gray-800">{req.name}</span>
+                              <div>
+                                <p className="font-medium text-gray-800">{req.name}</p>
+                                <p className="text-xs text-gray-400">ID: {req.id.slice(0, 8)}</p>
+                              </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-gray-600">{req.institution?.name || "-"}</TableCell>
-                          <TableCell className="text-gray-500 text-sm">
+                          <TableCell className="text-gray-600">
+                            <Badge variant="outline" className="bg-amber-50">{req.institution?.name || req.institution_id}</Badge>
+                          </TableCell>
+                          <TableCell className="text-gray-600 text-sm">
                             <div className="flex flex-col">
                               <span>{req.phone}</span>
-                              <span className="text-xs text-gray-400">{req.email}</span>
+                              <span className="text-gray-400">{req.email}</span>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={req.status === "approved" ? "bg-emerald-500" : req.status === "pending" ? "bg-amber-500" : "bg-red-500"}>
-                              {req.status === "approved" ? "已通过" : req.status === "pending" ? "待审核" : "已拒绝"}
-                            </Badge>
                           </TableCell>
                           <TableCell className="text-gray-500 text-sm">{new Date(req.created_at).toLocaleDateString()}</TableCell>
                           <TableCell>
+                            <Badge className={
+                              req.status === "approved" ? "bg-emerald-500" :
+                              req.status === "pending" ? "bg-amber-500" : "bg-red-500"
+                            }>
+                              {getStatusText(req.status)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
                             {req.status === "pending" && (
-                              <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+                              <Dialog open={reviewDialogOpen && selectedRequest?.id === req.id} onOpenChange={(open) => {
+                                setReviewDialogOpen(open);
+                                if (!open) setSelectedRequest(null);
+                              }}>
                                 <DialogTrigger asChild>
-                                  <Button size="sm" className="border-orange-200 text-orange-600 hover:bg-orange-50" onClick={() => setSelectedRequest(req)}>
-                                    <FileText className="w-4 h-4 mr-1" />审核
+                                  <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white" onClick={() => setSelectedRequest(req)}>
+                                    审核
                                   </Button>
                                 </DialogTrigger>
                                 <DialogContent>
                                   <DialogHeader>
                                     <DialogTitle>审核管理员申请</DialogTitle>
-                                    <DialogDescription>请审核 {selectedRequest?.name} 的机构管理员申请</DialogDescription>
+                                    <DialogDescription>请审核 {req.name} 的管理员申请</DialogDescription>
                                   </DialogHeader>
                                   <div className="space-y-4 py-4">
-                                    <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
-                                      <h4 className="font-medium text-gray-800 mb-2">申请人信息</h4>
-                                      <p className="text-gray-600">姓名: {selectedRequest?.name}</p>
-                                      <p className="text-gray-600">手机: {selectedRequest?.phone}</p>
-                                      <p className="text-gray-600">邮箱: {selectedRequest?.email}</p>
-                                      <p className="text-gray-600">所属机构: {selectedRequest?.institution?.name}</p>
-                                      {selectedRequest?.id_card_number && (
-                                        <p className="text-gray-600">身份证: {selectedRequest.id_card_number}</p>
-                                      )}
+                                    <div className="bg-orange-50 p-3 rounded-lg">
+                                      <p className="text-sm text-gray-600"><strong>申请人：</strong>{req.name}</p>
+                                      <p className="text-sm text-gray-600"><strong>手机号：</strong>{req.phone}</p>
+                                      <p className="text-sm text-gray-600"><strong>邮箱：</strong>{req.email}</p>
+                                      <p className="text-sm text-gray-600"><strong>所属机构：</strong>{req.institution?.name || req.institution_id}</p>
                                     </div>
                                     <div className="space-y-2">
                                       <Label>拒绝原因（仅拒绝时填写）</Label>
@@ -584,18 +611,20 @@ export default function AdminPage() {
             </TabsContent>
           )}
 
-          {/* Pet Management */}
+          {/* Pet List - Read-only for SysAdmin, Full control for Institution Admin */}
           <TabsContent value="pets">
             <Card className="border-orange-100 shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-gray-800 flex items-center gap-2">
                   <PawPrint className="w-5 h-5 text-orange-500" />
-                  {isSysAdmin ? "所有宠物" : "本机构宠物"}
+                  {isSysAdmin ? "宠物列表（只读）" : "本机构宠物"}
                 </CardTitle>
-                <Button className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white">
-                  <Plus className="w-4 h-4 mr-2" />
-                  添加宠物
-                </Button>
+                {!isSysAdmin && (
+                  <Button className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white">
+                    <Plus className="w-4 h-4 mr-2" />
+                    添加宠物
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
                 <Table>
@@ -613,21 +642,32 @@ export default function AdminPage() {
                     {pets.map(pet => (
                       <TableRow key={pet.id} className="hover:bg-orange-50/50">
                         <TableCell className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-xl">🐾</div>
+                          {pet.images && pet.images[0] ? (
+                            <img src={pet.images[0]} alt={pet.name} className="w-10 h-10 rounded-lg object-cover bg-orange-100" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-xl">🐾</div>
+                          )}
                           <span className="font-medium text-gray-800">{pet.name}</span>
                         </TableCell>
                         <TableCell className="text-gray-600">{pet.species} / {pet.breed}</TableCell>
                         {isSysAdmin && <TableCell className="text-gray-500 text-sm">{pet.institution?.name || "-"}</TableCell>}
                         <TableCell>
                           <Badge className={pet.status === "available" ? "bg-emerald-500" : pet.status === "pending" ? "bg-amber-500" : "bg-gray-500"}>
-                            {pet.status === "available" ? "可领养" : pet.status === "pending" ? "待审核" : "已领养"}
+                            {getStatusText(pet.status)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-gray-500 text-sm">{new Date(pet.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" className="text-orange-600 hover:bg-orange-50"><Eye className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="sm" className="text-gray-500 hover:bg-gray-50"><Edit className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="sm" className="text-orange-600 hover:bg-orange-50" onClick={() => { setPreviewPet(pet); setPreviewImageIndex(0); }}>
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            {!isSysAdmin && (
+                              <>
+                                <Button variant="ghost" size="sm" className="text-gray-500 hover:bg-gray-50"><Edit className="w-4 h-4" /></Button>
+                                <Button variant="ghost" size="sm" className="text-red-500 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
+                              </>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -645,80 +685,218 @@ export default function AdminPage() {
             </Card>
           </TabsContent>
 
-          {/* Adoption Reviews */}
-          <TabsContent value="adoptions">
-            <Card className="border-orange-100 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-gray-800 flex items-center gap-2">
-                  <Heart className="w-5 h-5 text-orange-500" />
-                  领养申请审核
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-orange-50">
-                      <TableHead className="text-gray-600 font-semibold">申请人</TableHead>
-                      <TableHead className="text-gray-600 font-semibold">申请宠物</TableHead>
-                      <TableHead className="text-gray-600 font-semibold">申请理由</TableHead>
-                      <TableHead className="text-gray-600 font-semibold">状态</TableHead>
-                      <TableHead className="text-gray-600 font-semibold">申请时间</TableHead>
-                      <TableHead className="text-gray-600 font-semibold">操作</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {applications.map(app => (
-                      <TableRow key={app.id} className="hover:bg-orange-50/50">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="w-8 h-8 bg-orange-100">
-                              <AvatarFallback className="text-orange-600 font-medium">{app.user.name?.[0]}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium text-gray-800">{app.user.name}</p>
-                              <p className="text-xs text-gray-500">{app.user.phone}</p>
+          {/* Adoption Reviews - Institution Admin Only */}
+          {!isSysAdmin && (
+            <TabsContent value="adoptions">
+              <Card className="border-orange-100 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-gray-800 flex items-center gap-2">
+                    <Heart className="w-5 h-5 text-orange-500" />
+                    领养申请审核
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-orange-50">
+                        <TableHead className="text-gray-600 font-semibold">申请人</TableHead>
+                        <TableHead className="text-gray-600 font-semibold">申请宠物</TableHead>
+                        <TableHead className="text-gray-600 font-semibold">申请理由</TableHead>
+                        <TableHead className="text-gray-600 font-semibold">状态</TableHead>
+                        <TableHead className="text-gray-600 font-semibold">申请时间</TableHead>
+                        <TableHead className="text-gray-600 font-semibold">操作</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {applications.map(app => (
+                        <TableRow key={app.id} className="hover:bg-orange-50/50">
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="w-8 h-8 bg-orange-100">
+                                <AvatarFallback className="text-orange-600 font-medium">{app.user.name?.[0]}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium text-gray-800">{app.user.name}</p>
+                                <p className="text-xs text-gray-500">{app.user.phone}</p>
+                              </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">🐾</span>
-                            <span className="text-gray-700">{app.pet.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-gray-600 max-w-xs truncate">{app.reason}</TableCell>
-                        <TableCell>
-                          <Badge className={app.status === "approved" ? "bg-emerald-500" : app.status === "pending" ? "bg-amber-500" : "bg-red-500"}>
-                            {app.status === "approved" ? "已通过" : app.status === "pending" ? "待审核" : "已拒绝"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-gray-500 text-sm">{new Date(app.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          {app.status === "pending" ? (
+                          </TableCell>
+                          <TableCell>
                             <div className="flex items-center gap-2">
-                              <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white"><CheckCircle className="w-4 h-4" /></Button>
-                              <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50"><XCircle className="w-4 h-4" /></Button>
+                              <span className="text-lg">🐾</span>
+                              <span className="text-gray-700">{app.pet.name}</span>
                             </div>
-                          ) : (
-                            <span className="text-gray-400 text-sm">已完成</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {applications.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                          暂无申请数据
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                          </TableCell>
+                          <TableCell className="text-gray-600 max-w-xs truncate">{app.reason}</TableCell>
+                          <TableCell>
+                            <Badge className={app.status === "approved" ? "bg-emerald-500" : app.status === "pending" ? "bg-amber-500" : "bg-red-500"}>
+                              {getStatusText(app.status)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-gray-500 text-sm">{new Date(app.created_at).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            {app.status === "pending" ? (
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white"><CheckCircle className="w-4 h-4" /></Button>
+                                <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50"><XCircle className="w-4 h-4" /></Button>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 text-sm">已完成</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {applications.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                            暂无申请数据
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
+
+      {/* Pet Preview Modal */}
+      <Dialog open={!!previewPet} onOpenChange={(open) => !open && setPreviewPet(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">{previewPet?.name}</DialogTitle>
+          </DialogHeader>
+          {previewPet && (
+            <div className="space-y-4">
+              {/* Image Gallery */}
+              {previewPet.images && previewPet.images.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                    <img
+                      src={previewPet.images[previewImageIndex]}
+                      alt={`${previewPet.name} - Image ${previewImageIndex + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {previewPet.images.length > 1 && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
+                          onClick={() => setPreviewImageIndex((prev) => (prev === 0 ? previewPet.images.length - 1 : prev - 1))}
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white"
+                          onClick={() => setPreviewImageIndex((prev) => (prev === previewPet.images.length - 1 ? 0 : prev + 1))}
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {previewPet.images.map((img, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setPreviewImageIndex(idx)}
+                        className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                          idx === previewImageIndex ? "border-orange-500" : "border-transparent"
+                        }`}
+                      >
+                        <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-center text-sm text-gray-500">{previewImageIndex + 1} / {previewPet.images.length}</p>
+                </div>
+              ) : (
+                <div className="aspect-video bg-orange-100 rounded-lg flex items-center justify-center text-6xl">🐾</div>
+              )}
+
+              {/* Pet Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">种类</p>
+                  <p className="font-medium">{previewPet.species}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">品种</p>
+                  <p className="font-medium">{previewPet.breed}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">性别</p>
+                  <p className="font-medium">{previewPet.gender === "male" ? "公" : previewPet.gender === "female" ? "母" : "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">年龄</p>
+                  <p className="font-medium">{previewPet.age || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">体型</p>
+                  <p className="font-medium">{previewPet.size === "small" ? "小型" : previewPet.size === "medium" ? "中型" : previewPet.size === "large" ? "大型" : "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">体重</p>
+                  <p className="font-medium">{previewPet.weight ? `${previewPet.weight}kg` : "-"}</p>
+                </div>
+              </div>
+
+              {/* Description */}
+              {previewPet.description && (
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">详细介绍</p>
+                  <p className="text-gray-700">{previewPet.description}</p>
+                </div>
+              )}
+
+              {/* Traits */}
+              {previewPet.traits && previewPet.traits.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">性格特点</p>
+                  <div className="flex flex-wrap gap-2">
+                    {previewPet.traits.map((trait, idx) => (
+                      <Badge key={idx} variant="secondary" className="bg-orange-100 text-orange-700">{trait}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Health Status */}
+              {previewPet.health_status && (
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">健康状况</p>
+                  <p className="text-gray-700">{previewPet.health_status}</p>
+                </div>
+              )}
+
+              {/* Shelter Info */}
+              {(previewPet.shelter_name || previewPet.shelter_address) && (
+                <div className="bg-gray-50 p-3 rounded-lg space-y-1">
+                  <p className="text-sm text-gray-500">所属机构</p>
+                  {previewPet.shelter_name && <p className="font-medium">{previewPet.shelter_name}</p>}
+                  {previewPet.shelter_address && <p className="text-sm text-gray-600">{previewPet.shelter_address}</p>}
+                </div>
+              )}
+
+              {/* Status */}
+              <div className="flex items-center gap-2">
+                <Badge className={previewPet.status === "available" ? "bg-emerald-500" : previewPet.status === "pending" ? "bg-amber-500" : "bg-gray-500"}>
+                  {getStatusText(previewPet.status)}
+                </Badge>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewPet(null)}>关闭</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
