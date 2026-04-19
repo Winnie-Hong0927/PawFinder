@@ -327,6 +327,10 @@ export default function AdminPage() {
     setEditPetOpen(true);
   };
 
+  const handleDeleteClick = (petId: string, petName: string) => {
+    setDeleteConfirm({ open: true, petId, petName });
+  };
+
   const handleUpdatePet = async () => {
     try {
       // 使用已上传的图片URL
@@ -365,15 +369,19 @@ export default function AdminPage() {
     }
   };
 
-  const handleDeletePet = async (petId: string) => {
-    if (!confirm("确定要删除这只宠物吗？")) return;
+  const handleDeletePet = async () => {
+    const { petId } = deleteConfirm;
     try {
       const res = await fetch(`/api/pets/${petId}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
         setPets(pets.filter(p => p.id !== petId));
+        setDeleteConfirm({ open: false, petId: "", petName: "" });
+      } else {
+        alert(data.error || "删除失败");
       }
     } catch (error) {
+      console.error("Delete pet error:", error);
       alert("删除宠物失败");
     }
   };
@@ -918,7 +926,7 @@ export default function AdminPage() {
                                 <Button size="sm" variant="ghost" onClick={() => handleEditPet(pet)}>
                                   <Edit className="w-4 h-4" />
                                 </Button>
-                                <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50" onClick={() => handleDeletePet(pet.id)}>
+                                <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50" onClick={() => handleDeleteClick(pet.id, pet.name)}>
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </>
@@ -1160,6 +1168,27 @@ export default function AdminPage() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPreviewPet(null)}>关闭</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 删除确认弹窗 */}
+      <Dialog open={deleteConfirm.open} onOpenChange={(open) => !open && setDeleteConfirm({ open: false, petId: "", petName: "" })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>确认删除</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-600">确定要删除宠物 <span className="font-semibold text-gray-900">"{deleteConfirm.petName}"</span> 吗？</p>
+            <p className="text-sm text-red-500 mt-2">此操作不可撤销。</p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteConfirm({ open: false, petId: "", petName: "" })}>
+              取消
+            </Button>
+            <Button variant="destructive" onClick={handleDeletePet}>
+              确认删除
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
