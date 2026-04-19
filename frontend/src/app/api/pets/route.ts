@@ -58,24 +58,31 @@ export async function POST(request: NextRequest) {
     const client = getSupabaseClient();
     const { data: admin } = await client
       .from("users")
-      .select("role")
+      .select("role, institution_id")
       .eq("id", userId)
       .maybeSingle();
 
-    if (!admin || admin.role !== "admin") {
+    // 允许 sysadmin 或 institution_admin 创建宠物
+    if (!admin || (admin.role !== "admin" && admin.role !== "institution_admin" && admin.role !== "sysadmin")) {
       return NextResponse.json(
-        { error: "Only admins can create pets" },
+        { error: "权限不足，只有管理员可以创建宠物" },
         { status: 403 }
       );
     }
 
     const body = await request.json();
     
+    // 如果是机构管理员，自动关联机构ID
+    if (admin.role === "institution_admin" && admin.institution_id) {
+      body.institution_id = admin.institution_id;
+    }
+    
     const { data, error } = await client
       .from("pets")
       .insert({
         ...body,
         created_by: userId,
+        status: body.status || "available",
       })
       .select()
       .single();

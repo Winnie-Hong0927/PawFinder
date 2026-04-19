@@ -110,6 +110,24 @@ export default function AdminPage() {
   const [previewPet, setPreviewPet] = useState<Pet | null>(null);
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
 
+  // Add pet dialog state
+  const [addPetOpen, setAddPetOpen] = useState(false);
+  const [addPetForm, setAddPetForm] = useState({
+    name: "",
+    species: "dog",
+    breed: "",
+    gender: "male",
+    age: "",
+    size: "medium",
+    weight: "",
+    images: "",
+    description: "",
+    traits: "",
+    health_status: "",
+    shelter_name: "",
+    shelter_address: "",
+  });
+
   // Redirect based on role
   useEffect(() => {
     if (!authLoading) {
@@ -181,6 +199,48 @@ export default function AdminPage() {
       }
     } catch (error) {
       alert("创建机构失败");
+    }
+  };
+
+  const handleCreatePet = async () => {
+    try {
+      const imagesArray = addPetForm.images.split("\n").map(url => url.trim()).filter(url => url);
+      const traitsArray = addPetForm.traits.split("、").map(t => t.trim()).filter(t => t);
+      
+      const res = await fetch("/api/pets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...addPetForm,
+          weight: addPetForm.weight ? parseFloat(addPetForm.weight) : 0,
+          images: imagesArray,
+          traits: traitsArray,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPets([data.pet, ...pets]);
+        setAddPetOpen(false);
+        setAddPetForm({
+          name: "",
+          species: "dog",
+          breed: "",
+          gender: "male",
+          age: "",
+          size: "medium",
+          weight: "",
+          images: "",
+          description: "",
+          traits: "",
+          health_status: "",
+          shelter_name: "",
+          shelter_address: "",
+        });
+      } else {
+        alert(data.error || "创建失败");
+      }
+    } catch (error) {
+      alert("创建宠物失败");
     }
   };
 
@@ -620,10 +680,111 @@ export default function AdminPage() {
                   {isSysAdmin ? "宠物列表（只读）" : "本机构宠物"}
                 </CardTitle>
                 {!isSysAdmin && (
-                  <Button className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white">
-                    <Plus className="w-4 h-4 mr-2" />
-                    添加宠物
-                  </Button>
+                  <Dialog open={addPetOpen} onOpenChange={setAddPetOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white">
+                        <Plus className="w-4 h-4 mr-2" />
+                        添加宠物
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>添加新宠物</DialogTitle>
+                        <DialogDescription>填写宠物信息，带 * 号为必填项</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>宠物名称 *</Label>
+                            <Input value={addPetForm.name} onChange={e => setAddPetForm({ ...addPetForm, name: e.target.value })} placeholder="如：小橘" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>种类 *</Label>
+                            <select
+                              value={addPetForm.species}
+                              onChange={e => setAddPetForm({ ...addPetForm, species: e.target.value })}
+                              className="w-full h-10 px-3 border rounded-md border-gray-200 bg-white"
+                            >
+                              <option value="dog">狗</option>
+                              <option value="cat">猫</option>
+                              <option value="other">其他</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>品种</Label>
+                            <Input value={addPetForm.breed} onChange={e => setAddPetForm({ ...addPetForm, breed: e.target.value })} placeholder="如：中华田园猫" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>性别 *</Label>
+                            <select
+                              value={addPetForm.gender}
+                              onChange={e => setAddPetForm({ ...addPetForm, gender: e.target.value })}
+                              className="w-full h-10 px-3 border rounded-md border-gray-200 bg-white"
+                            >
+                              <option value="male">公</option>
+                              <option value="female">母</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label>年龄</Label>
+                            <Input value={addPetForm.age} onChange={e => setAddPetForm({ ...addPetForm, age: e.target.value })} placeholder="如：2岁" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>体型</Label>
+                            <select
+                              value={addPetForm.size}
+                              onChange={e => setAddPetForm({ ...addPetForm, size: e.target.value })}
+                              className="w-full h-10 px-3 border rounded-md border-gray-200 bg-white"
+                            >
+                              <option value="small">小型</option>
+                              <option value="medium">中型</option>
+                              <option value="large">大型</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>体重(kg)</Label>
+                            <Input type="number" value={addPetForm.weight} onChange={e => setAddPetForm({ ...addPetForm, weight: e.target.value })} placeholder="如：5" />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>宠物图片URL（每行一个）</Label>
+                          <Textarea value={addPetForm.images} onChange={e => setAddPetForm({ ...addPetForm, images: e.target.value })} placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg" rows={3} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>详细介绍</Label>
+                          <Textarea value={addPetForm.description} onChange={e => setAddPetForm({ ...addPetForm, description: e.target.value })} placeholder="描述宠物的性格、习惯等..." rows={3} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>性格特点（用顿号分隔）</Label>
+                            <Input value={addPetForm.traits} onChange={e => setAddPetForm({ ...addPetForm, traits: e.target.value })} placeholder="如：温顺、亲人、活泼" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>健康状况</Label>
+                            <Input value={addPetForm.health_status} onChange={e => setAddPetForm({ ...addPetForm, health_status: e.target.value })} placeholder="如：已绝育、已打疫苗" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>收容所名称</Label>
+                            <Input value={addPetForm.shelter_name} onChange={e => setAddPetForm({ ...addPetForm, shelter_name: e.target.value })} placeholder="如：爱心宠物救助中心" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>收容所地址</Label>
+                            <Input value={addPetForm.shelter_address} onChange={e => setAddPetForm({ ...addPetForm, shelter_address: e.target.value })} placeholder="如：北京市朝阳区..." />
+                          </div>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setAddPetOpen(false)}>取消</Button>
+                        <Button className="bg-gradient-to-r from-orange-500 to-amber-500" onClick={handleCreatePet} disabled={!addPetForm.name}>确认添加</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 )}
               </CardHeader>
               <CardContent>
