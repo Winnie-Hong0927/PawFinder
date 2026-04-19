@@ -1,9 +1,8 @@
 package com.pawfinder.user.service;
 
-import cn.hutool.captcha.CaptchaUtil;
-import cn.hutool.captcha.LineCaptcha;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pawfinder.common.result.BusinessException;
+import com.pawfinder.common.result.ErrorCode;
 import com.pawfinder.common.util.IdUtil;
 import com.pawfinder.common.util.JwtUtil;
 import com.pawfinder.user.dto.*;
@@ -11,8 +10,6 @@ import com.pawfinder.user.entity.Institution;
 import com.pawfinder.user.entity.User;
 import com.pawfinder.user.mapper.InstitutionMapper;
 import com.pawfinder.user.mapper.UserMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,9 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class AuthService {
 
     private final UserMapper userMapper;
@@ -31,7 +26,12 @@ public class AuthService {
     private final StringRedisTemplate redisTemplate;
 
     private static final String SMS_CODE_PREFIX = "sms:code:";
-    private static final String CAPTCHA_PREFIX = "captcha:";
+
+    public AuthService(UserMapper userMapper, InstitutionMapper institutionMapper, StringRedisTemplate redisTemplate) {
+        this.userMapper = userMapper;
+        this.institutionMapper = institutionMapper;
+        this.redisTemplate = redisTemplate;
+    }
 
     /**
      * Send verification code
@@ -44,7 +44,7 @@ public class AuthService {
         String key = SMS_CODE_PREFIX + phone;
         redisTemplate.opsForValue().set(key, code, 5, TimeUnit.MINUTES);
 
-        log.info("SMS code sent to {}: {}", phone, code);
+        System.out.println("SMS code sent to " + phone + ": " + code);
 
         // In production, integrate with SMS gateway here
         // For development, just return the code
@@ -64,7 +64,7 @@ public class AuthService {
         String storedCode = redisTemplate.opsForValue().get(key);
 
         if (storedCode == null || !storedCode.equals(code)) {
-            throw BusinessException.INVALID_VERIFICATION_CODE;
+            throw new BusinessException(ErrorCode.INVALID_VERIFICATION_CODE);
         }
 
         // Delete used code
@@ -98,7 +98,7 @@ public class AuthService {
         user.setRole("user");
         user.setAdopterStatus("pending");
         userMapper.insert(user);
-        log.info("New user created: {}", user.getId());
+        System.out.println("New user created: " + user.getId());
         return user;
     }
 
@@ -108,7 +108,7 @@ public class AuthService {
     public UserVO getCurrentUser(String userId) {
         User user = userMapper.selectById(userId);
         if (user == null) {
-            throw BusinessException.USER_NOT_FOUND;
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
         return buildUserVO(user);
     }
@@ -120,7 +120,7 @@ public class AuthService {
     public UserVO updateUser(String userId, UserUpdateRequest request) {
         User user = userMapper.selectById(userId);
         if (user == null) {
-            throw BusinessException.USER_NOT_FOUND;
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
         if (request.getName() != null) {
@@ -143,33 +143,32 @@ public class AuthService {
         }
 
         userMapper.updateById(user);
-        log.info("User updated: {}", userId);
+        System.out.println("User updated: " + userId);
 
         return buildUserVO(user);
     }
 
     private UserVO buildUserVO(User user) {
-        UserVO.UserVOBuilder builder = UserVO.builder()
-                .id(user.getId())
-                .phone(user.getPhone())
-                .name(user.getName())
-                .email(user.getEmail())
-                .role(user.getRole())
-                .institutionId(user.getInstitutionId())
-                .avatarUrl(user.getAvatarUrl())
-                .bio(user.getBio())
-                .address(user.getAddress())
-                .adopterStatus(user.getAdopterStatus())
-                .createdAt(user.getCreatedAt());
+        UserVO vo = new UserVO();
+        vo.setId(user.getId());
+        vo.setPhone(user.getPhone());
+        vo.setName(user.getName());
+        vo.setEmail(user.getEmail());
+        vo.setRole(user.getRole());
+        vo.setInstitutionId(user.getInstitutionId());
+        vo.setAvatarUrl(user.getAvatarUrl());
+        vo.setBio(user.getBio());
+        vo.setAddress(user.getAddress());
+        vo.setAdopterStatus(user.getAdopterStatus());
 
         // Load institution name if exists
         if (user.getInstitutionId() != null) {
             Institution institution = institutionMapper.selectById(user.getInstitutionId());
             if (institution != null) {
-                builder.institutionName(institution.getName());
+                vo.setInstitutionName(institution.getName());
             }
         }
 
-        return builder.build();
+        return vo;
     }
 }

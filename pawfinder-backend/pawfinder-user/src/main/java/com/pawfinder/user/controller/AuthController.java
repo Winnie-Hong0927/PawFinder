@@ -1,5 +1,7 @@
 package com.pawfinder.user.controller;
 
+import com.pawfinder.common.result.BusinessException;
+import com.pawfinder.common.result.ErrorCode;
 import com.pawfinder.common.result.Result;
 import com.pawfinder.common.util.JwtUtil;
 import com.pawfinder.user.dto.*;
@@ -8,16 +10,18 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "认证管理")
 @RestController
 @RequestMapping("/api/user/v1/auth")
-@RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
 
     @Operation(summary = "发送验证码")
     @PostMapping("/send-code")
@@ -54,7 +58,7 @@ public class AuthController {
     private String getUserIdFromRequest(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw com.pawfinder.common.result.BusinessException.UNAUTHORIZED;
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
         String token = authHeader.substring(7);
         return JwtUtil.getUserId(token);

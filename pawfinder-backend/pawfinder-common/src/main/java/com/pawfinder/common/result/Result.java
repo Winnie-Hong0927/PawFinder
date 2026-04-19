@@ -1,89 +1,79 @@
 package com.pawfinder.common.result;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.io.Serial;
-import java.io.Serializable;
-
 /**
  * Unified API response wrapper
  */
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class Result<T> implements Serializable {
+public class Result<T> {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
-
-    /**
-     * Response code
-     */
     private int code;
-
-    /**
-     * Response message
-     */
     private String message;
-
-    /**
-     * Response data
-     */
     private T data;
-
-    /**
-     * Timestamp
-     */
     private long timestamp;
 
-    /**
-     * Request ID
-     */
-    private String requestId;
+    public Result() {
+        this.timestamp = System.currentTimeMillis();
+    }
+
+    public Result(int code, String message, T data) {
+        this.code = code;
+        this.message = message;
+        this.data = data;
+        this.timestamp = System.currentTimeMillis();
+    }
 
     public static <T> Result<T> success() {
-        return success(null);
+        return new Result<>(ErrorCode.SUCCESS.getCode(), ErrorCode.SUCCESS.getMessage(), null);
     }
 
     public static <T> Result<T> success(T data) {
-        Result<T> result = new Result<>();
-        result.setCode(200);
-        result.setMessage("success");
-        result.setData(data);
-        result.setTimestamp(System.currentTimeMillis());
-        return result;
+        return new Result<>(ErrorCode.SUCCESS.getCode(), ErrorCode.SUCCESS.getMessage(), data);
     }
 
     public static <T> Result<T> success(String message, T data) {
-        Result<T> result = new Result<>();
-        result.setCode(200);
-        result.setMessage(message);
-        result.setData(data);
-        result.setTimestamp(System.currentTimeMillis());
-        return result;
+        return new Result<>(ErrorCode.SUCCESS.getCode(), message, data);
+    }
+
+    public static <T> Result<T> error(ErrorCode errorCode) {
+        return new Result<>(errorCode.getCode(), errorCode.getMessage(), null);
     }
 
     public static <T> Result<T> error(int code, String message) {
-        Result<T> result = new Result<>();
-        result.setCode(code);
-        result.setMessage(message);
-        result.setTimestamp(System.currentTimeMillis());
-        return result;
-    }
-
-    public static <T> Result<T> error(String message) {
-        return error(500, message);
+        return new Result<>(code, message, null);
     }
 
     public static <T> Result<T> error(BusinessException e) {
-        return error(e.getCode(), e.getMessage());
+        return new Result<>(e.getCode(), e.getMessage(), null);
     }
 
-    public boolean isSuccess() {
-        return code == 200;
+    public int getCode() {
+        return code;
+    }
+
+    public void setCode(int code) {
+        this.code = code;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public T getData() {
+        return data;
+    }
+
+    public void setData(T data) {
+        this.data = data;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
     }
 }

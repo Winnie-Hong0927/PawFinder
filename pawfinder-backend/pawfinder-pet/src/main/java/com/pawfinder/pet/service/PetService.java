@@ -4,6 +4,7 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pawfinder.common.result.BusinessException;
+import com.pawfinder.common.result.ErrorCode;
 import com.pawfinder.common.util.IdUtil;
 import com.pawfinder.common.util.PageResult;
 import com.pawfinder.pet.dto.PetCreateRequest;
@@ -11,19 +12,17 @@ import com.pawfinder.pet.dto.PetStatusUpdateRequest;
 import com.pawfinder.pet.dto.PetVO;
 import com.pawfinder.pet.entity.Pet;
 import com.pawfinder.pet.mapper.PetMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class PetService {
 
     private final PetMapper petMapper;
@@ -31,13 +30,18 @@ public class PetService {
 
     private static final String APPLICATION_COUNT_PREFIX = "pet:application:count:";
 
+    public PetService(PetMapper petMapper, StringRedisTemplate redisTemplate) {
+        this.petMapper = petMapper;
+        this.redisTemplate = redisTemplate;
+    }
+
     /**
      * Get pet by ID
      */
     public PetVO getById(String id) {
         Pet pet = petMapper.selectById(id);
         if (pet == null) {
-            throw BusinessException.PET_NOT_FOUND;
+            throw new BusinessException(ErrorCode.PET_NOT_FOUND);
         }
         return toVO(pet);
     }
@@ -87,8 +91,13 @@ public class PetService {
 
         Page<Pet> result = petMapper.selectPage(pageParam, queryWrapper);
 
-        return PageResult.of(result.getRecords().stream().map(this::toVO).toList())
-                .of(result.getTotal(), result.getCurrent(), result.getSize());
+        PageResult<PetVO> pageResult = new PageResult<>();
+        pageResult.setTotal(result.getTotal());
+        pageResult.setCurrent(result.getCurrent());
+        pageResult.setSize(result.getSize());
+        pageResult.setPages(result.getPages());
+        pageResult.setRecords(result.getRecords().stream().map(this::toVO).toList());
+        return pageResult;
     }
 
     /**
@@ -111,12 +120,12 @@ public class PetService {
         pet.setVaccinationStatus(request.getVaccinationStatus() != null ? request.getVaccinationStatus() : false);
         pet.setSterilizationStatus(request.getSterilizationStatus() != null ? request.getSterilizationStatus() : false);
         pet.setShelterLocation(request.getShelterLocation());
-        pet.setAdoptionFee(request.getAdoptionFee() != null ? request.getAdoptionFee() : java.math.BigDecimal.ZERO);
+        pet.setAdoptionFee(request.getAdoptionFee() != null ? request.getAdoptionFee() : BigDecimal.ZERO);
         pet.setStatus("available");
         pet.setInstitutionId(request.getInstitutionId());
 
         petMapper.insert(pet);
-        log.info("Pet created: {}", pet.getId());
+        System.out.println("Pet created: " + pet.getId());
 
         return toVO(pet);
     }
@@ -128,7 +137,7 @@ public class PetService {
     public PetVO update(String id, PetCreateRequest request) {
         Pet pet = petMapper.selectById(id);
         if (pet == null) {
-            throw BusinessException.PET_NOT_FOUND;
+            throw new BusinessException(ErrorCode.PET_NOT_FOUND);
         }
 
         if (request.getName() != null) {
@@ -175,7 +184,7 @@ public class PetService {
         }
 
         petMapper.updateById(pet);
-        log.info("Pet updated: {}", id);
+        System.out.println("Pet updated: " + id);
 
         return toVO(pet);
     }
@@ -187,12 +196,12 @@ public class PetService {
     public void updateStatus(String id, PetStatusUpdateRequest request) {
         Pet pet = petMapper.selectById(id);
         if (pet == null) {
-            throw BusinessException.PET_NOT_FOUND;
+            throw new BusinessException(ErrorCode.PET_NOT_FOUND);
         }
 
         pet.setStatus(request.getStatus());
         petMapper.updateById(pet);
-        log.info("Pet {} status updated to: {}", id, request.getStatus());
+        System.out.println("Pet " + id + " status updated to: " + request.getStatus());
     }
 
     /**
@@ -202,12 +211,12 @@ public class PetService {
     public void delete(String id) {
         Pet pet = petMapper.selectById(id);
         if (pet == null) {
-            throw BusinessException.PET_NOT_FOUND;
+            throw new BusinessException(ErrorCode.PET_NOT_FOUND);
         }
 
-        pet.setDeletedAt(java.time.LocalDateTime.now());
+        pet.setDeletedAt(LocalDateTime.now());
         petMapper.updateById(pet);
-        log.info("Pet deleted: {}", id);
+        System.out.println("Pet deleted: " + id);
     }
 
     /**
@@ -219,9 +228,6 @@ public class PetService {
         if (cachedCount != null) {
             return Long.parseLong(cachedCount);
         }
-
-        // Query from database (this would be replaced by actual count from adoption service)
-        // For now, return 0
         return 0L;
     }
 
@@ -254,26 +260,27 @@ public class PetService {
         // Get application count from cache
         Long applicationCount = getApplicationCount(pet.getId());
 
-        return PetVO.builder()
-                .id(pet.getId())
-                .name(pet.getName())
-                .species(pet.getSpecies())
-                .breed(pet.getBreed())
-                .age(pet.getAge())
-                .gender(pet.getGender())
-                .size(pet.getSize())
-                .images(imageList)
-                .description(pet.getDescription())
-                .traits(traitList)
-                .healthStatus(pet.getHealthStatus())
-                .vaccinationStatus(pet.getVaccinationStatus())
-                .sterilizationStatus(pet.getSterilizationStatus())
-                .shelterLocation(pet.getShelterLocation())
-                .adoptionFee(pet.getAdoptionFee())
-                .status(pet.getStatus())
-                .institutionId(pet.getInstitutionId())
-                .createdAt(pet.getCreatedAt())
-                .applicationCount(applicationCount)
-                .build();
+        PetVO vo = new PetVO();
+        vo.setId(pet.getId());
+        vo.setName(pet.getName());
+        vo.setSpecies(pet.getSpecies());
+        vo.setBreed(pet.getBreed());
+        vo.setAge(pet.getAge());
+        vo.setGender(pet.getGender());
+        vo.setSize(pet.getSize());
+        vo.setImages(imageList);
+        vo.setDescription(pet.getDescription());
+        vo.setTraits(traitList);
+        vo.setHealthStatus(pet.getHealthStatus());
+        vo.setVaccinationStatus(pet.getVaccinationStatus());
+        vo.setSterilizationStatus(pet.getSterilizationStatus());
+        vo.setShelterLocation(pet.getShelterLocation());
+        vo.setAdoptionFee(pet.getAdoptionFee());
+        vo.setStatus(pet.getStatus());
+        vo.setInstitutionId(pet.getInstitutionId());
+        vo.setCreatedAt(pet.getCreatedAt());
+        vo.setApplicationCount(applicationCount);
+
+        return vo;
     }
 }

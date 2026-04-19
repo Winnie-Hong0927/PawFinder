@@ -1,0 +1,8 @@
+/workspace/projects/pawfinder-backend/pawfinder-pet/src/main/java/com/pawfinder/pet/dto/PetVO.java
+/workspace/projects/pawfinder-backend/pawfinder-pet/src/main/java/com/pawfinder/pet/controller/PetController.java
+/workspace/projects/pawfinder-backend/pawfinder-pet/src/main/java/com/pawfinder/pet/mapper/PetMapper.java
+/workspace/projects/pawfinder-backend/pawfinder-pet/src/main/java/com/pawfinder/pet/entity/Pet.java
+/workspace/projects/pawfinder-backend/pawfinder-pet/src/main/java/com/pawfinder/pet/dto/PetStatusUpdateRequest.java
+/workspace/projects/pawfinder-backend/pawfinder-pet/src/main/java/com/pawfinder/pet/PetApplication.java
+/workspace/projects/pawfinder-backend/pawfinder-pet/src/main/java/com/pawfinder/pet/dto/PetCreateRequest.java
+/workspace/projects/pawfinder-backend/pawfinder-pet/src/main/java/com/pawfinder/pet/service/PetService.java

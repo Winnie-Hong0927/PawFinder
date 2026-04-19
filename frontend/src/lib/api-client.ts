@@ -59,7 +59,8 @@ async function request<T>(
 
   const result: ApiResponse<T> = await response.json();
   
-  if (result.code !== 0) {
+  // 后端返回 code=200 表示成功
+  if (result.code !== 200) {
     throw new Error(result.message || 'Request failed');
   }
 

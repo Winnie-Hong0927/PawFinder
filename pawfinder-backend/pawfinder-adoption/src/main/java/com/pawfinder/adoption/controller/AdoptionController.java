@@ -1,5 +1,7 @@
 package com.pawfinder.adoption.controller;
 
+import com.pawfinder.common.result.BusinessException;
+import com.pawfinder.common.result.ErrorCode;
 import com.pawfinder.common.result.Result;
 import com.pawfinder.common.util.JwtUtil;
 import com.pawfinder.common.util.PageResult;
@@ -11,16 +13,18 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "领养申请管理")
 @RestController
 @RequestMapping("/api/adoption/v1/applications")
-@RequiredArgsConstructor
 public class AdoptionController {
 
     private final AdoptionService adoptionService;
+
+    public AdoptionController(AdoptionService adoptionService) {
+        this.adoptionService = adoptionService;
+    }
 
     @Operation(summary = "获取申请详情")
     @GetMapping("/{id}")
@@ -94,7 +98,7 @@ public class AdoptionController {
     private String getUserIdFromRequest(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw com.pawfinder.common.result.BusinessException.UNAUTHORIZED;
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
         String token = authHeader.substring(7);
         return JwtUtil.getUserId(token);

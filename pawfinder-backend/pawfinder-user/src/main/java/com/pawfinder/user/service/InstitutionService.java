@@ -3,23 +3,24 @@ package com.pawfinder.user.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pawfinder.common.result.BusinessException;
+import com.pawfinder.common.result.ErrorCode;
 import com.pawfinder.common.util.IdUtil;
 import com.pawfinder.common.util.PageResult;
 import com.pawfinder.user.dto.InstitutionCreateRequest;
 import com.pawfinder.user.dto.InstitutionVO;
 import com.pawfinder.user.entity.Institution;
 import com.pawfinder.user.mapper.InstitutionMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class InstitutionService {
 
     private final InstitutionMapper institutionMapper;
+
+    public InstitutionService(InstitutionMapper institutionMapper) {
+        this.institutionMapper = institutionMapper;
+    }
 
     /**
      * Get institution by ID
@@ -27,7 +28,7 @@ public class InstitutionService {
     public InstitutionVO getById(String id) {
         Institution institution = institutionMapper.selectById(id);
         if (institution == null) {
-            throw BusinessException.INSTITUTION_NOT_FOUND;
+            throw new BusinessException(ErrorCode.INSTITUTION_NOT_FOUND);
         }
         return toVO(institution);
     }
@@ -52,8 +53,8 @@ public class InstitutionService {
 
         Page<Institution> result = institutionMapper.selectPage(pageParam, queryWrapper);
 
-        return PageResult.of(result.getRecords().stream().map(this::toVO).toList())
-                .of(result.getTotal(), result.getCurrent(), result.getSize());
+        return new PageResult<>(result.getTotal(), result.getCurrent(), result.getSize(),
+                result.getPages(), result.getRecords().stream().map(this::toVO).toList());
     }
 
     /**
@@ -69,7 +70,7 @@ public class InstitutionService {
         );
 
         if (count > 0) {
-            throw BusinessException.INSTITUTION_NAME_DUPLICATE;
+            throw new BusinessException(4001, "机构名称已存在");
         }
 
         Institution institution = new Institution();
@@ -89,7 +90,7 @@ public class InstitutionService {
         institution.setStatus("active");
 
         institutionMapper.insert(institution);
-        log.info("Institution created: {}", institution.getId());
+        System.out.println("Institution created: " + institution.getId());
 
         return toVO(institution);
     }
@@ -101,7 +102,7 @@ public class InstitutionService {
     public InstitutionVO update(String id, InstitutionCreateRequest request) {
         Institution institution = institutionMapper.selectById(id);
         if (institution == null) {
-            throw BusinessException.INSTITUTION_NOT_FOUND;
+            throw new BusinessException(ErrorCode.INSTITUTION_NOT_FOUND);
         }
 
         if (request.getName() != null) {
@@ -142,28 +143,27 @@ public class InstitutionService {
         }
 
         institutionMapper.updateById(institution);
-        log.info("Institution updated: {}", id);
+        System.out.println("Institution updated: " + id);
 
         return toVO(institution);
     }
 
     private InstitutionVO toVO(Institution institution) {
-        return InstitutionVO.builder()
-                .id(institution.getId())
-                .name(institution.getName())
-                .type(institution.getType())
-                .licenseNumber(institution.getLicenseNumber())
-                .contactPhone(institution.getContactPhone())
-                .contactEmail(institution.getContactEmail())
-                .address(institution.getAddress())
-                .province(institution.getProvince())
-                .city(institution.getCity())
-                .district(institution.getDistrict())
-                .description(institution.getDescription())
-                .logoUrl(institution.getLogoUrl())
-                .businessHours(institution.getBusinessHours())
-                .status(institution.getStatus())
-                .createdAt(institution.getCreatedAt())
-                .build();
+        InstitutionVO vo = new InstitutionVO();
+        vo.setId(institution.getId());
+        vo.setName(institution.getName());
+        vo.setType(institution.getType());
+        vo.setLicenseNumber(institution.getLicenseNumber());
+        vo.setContactPhone(institution.getContactPhone());
+        vo.setContactEmail(institution.getContactEmail());
+        vo.setAddress(institution.getAddress());
+        vo.setProvince(institution.getProvince());
+        vo.setCity(institution.getCity());
+        vo.setDistrict(institution.getDistrict());
+        vo.setDescription(institution.getDescription());
+        vo.setLogoUrl(institution.getLogoUrl());
+        vo.setBusinessHours(institution.getBusinessHours());
+        vo.setStatus(institution.getStatus());
+        return vo;
     }
 }

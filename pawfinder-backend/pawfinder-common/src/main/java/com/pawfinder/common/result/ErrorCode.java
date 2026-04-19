@@ -1,13 +1,8 @@
 package com.pawfinder.common.result;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-
 /**
  * Error codes enumeration
  */
-@Getter
-@AllArgsConstructor
 public enum ErrorCode {
 
     // Success
@@ -38,6 +33,7 @@ public enum ErrorCode {
     APPLICATION_NOT_FOUND(3001, "申请不存在"),
     APPLICATION_STATUS_ERROR(3002, "申请状态不允许操作"),
     APPLICATION_ALREADY_EXISTS(3003, "已提交过该宠物申请"),
+    APPLICATION_NOT_PENDING(3004, "申请不在待审核状态"),
 
     // Institution errors (4001-4999)
     INSTITUTION_NOT_FOUND(4001, "机构不存在"),
@@ -51,4 +47,17 @@ public enum ErrorCode {
 
     private final int code;
     private final String message;
+
+    ErrorCode(int code, String message) {
+        this.code = code;
+        this.message = message;
+    }
+
+    public int getCode() {
+        return code;
+    }
+
+    public String getMessage() {
+        return message;
+    }
 }

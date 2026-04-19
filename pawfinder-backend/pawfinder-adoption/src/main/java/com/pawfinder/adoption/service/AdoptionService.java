@@ -11,10 +11,9 @@ import com.pawfinder.adoption.entity.AdoptionRecord;
 import com.pawfinder.adoption.mapper.AdoptionApplicationMapper;
 import com.pawfinder.adoption.mapper.AdoptionRecordMapper;
 import com.pawfinder.common.result.BusinessException;
+import com.pawfinder.common.result.ErrorCode;
 import com.pawfinder.common.util.IdUtil;
 import com.pawfinder.common.util.PageResult;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,9 +22,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class AdoptionService {
 
     private final AdoptionApplicationMapper applicationMapper;
@@ -33,11 +30,18 @@ public class AdoptionService {
     private final StringRedisTemplate redisTemplate;
 
     // Mock data for user and pet info (in production, use OpenFeign to call other services)
-    // For simplicity, we store pet name and image in application for quick retrieval
     private String mockPetName = "未知宠物";
     private String mockPetImage = "";
     private String mockUserName = "未知申请人";
     private String mockUserPhone = "";
+
+    public AdoptionService(AdoptionApplicationMapper applicationMapper, 
+                           AdoptionRecordMapper recordMapper,
+                           StringRedisTemplate redisTemplate) {
+        this.applicationMapper = applicationMapper;
+        this.recordMapper = recordMapper;
+        this.redisTemplate = redisTemplate;
+    }
 
     /**
      * Get application by ID
@@ -45,7 +49,7 @@ public class AdoptionService {
     public ApplicationVO getById(String id) {
         AdoptionApplication application = applicationMapper.selectById(id);
         if (application == null) {
-            throw BusinessException.APPLICATION_NOT_FOUND;
+            throw new BusinessException(ErrorCode.APPLICATION_NOT_FOUND);
         }
         return toVO(application);
     }
@@ -78,8 +82,13 @@ public class AdoptionService {
 
         Page<AdoptionApplication> result = applicationMapper.selectPage(pageParam, queryWrapper);
 
-        return PageResult.of(result.getRecords().stream().map(this::toVO).toList())
-                .of(result.getTotal(), result.getCurrent(), result.getSize());
+        PageResult<ApplicationVO> pageResult = new PageResult<>();
+        pageResult.setTotal(result.getTotal());
+        pageResult.setCurrent(result.getCurrent());
+        pageResult.setSize(result.getSize());
+        pageResult.setPages(result.getPages());
+        pageResult.setRecords(result.getRecords().stream().map(this::toVO).toList());
+        return pageResult;
     }
 
     /**
@@ -103,8 +112,13 @@ public class AdoptionService {
 
         Page<AdoptionApplication> result = applicationMapper.selectPage(pageParam, queryWrapper);
 
-        return PageResult.of(result.getRecords().stream().map(this::toVO).toList())
-                .of(result.getTotal(), result.getCurrent(), result.getSize());
+        PageResult<ApplicationVO> pageResult = new PageResult<>();
+        pageResult.setTotal(result.getTotal());
+        pageResult.setCurrent(result.getCurrent());
+        pageResult.setSize(result.getSize());
+        pageResult.setPages(result.getPages());
+        pageResult.setRecords(result.getRecords().stream().map(this::toVO).toList());
+        return pageResult;
     }
 
     /**
@@ -121,7 +135,7 @@ public class AdoptionService {
         );
 
         if (existingCount > 0) {
-            throw BusinessException.APPLICATION_ALREADY_EXISTS;
+            throw new BusinessException(ErrorCode.APPLICATION_ALREADY_EXISTS);
         }
 
         AdoptionApplication application = new AdoptionApplication();
@@ -139,7 +153,7 @@ public class AdoptionService {
         application.setStatus("pending");
 
         applicationMapper.insert(application);
-        log.info("Adoption application created: {} by user {}", application.getId(), userId);
+        System.out.println("Adoption application created: " + application.getId() + " by user " + userId);
 
         return toVO(application);
     }
@@ -151,11 +165,11 @@ public class AdoptionService {
     public ApplicationVO review(String applicationId, String adminId, ApplicationReviewRequest request) {
         AdoptionApplication application = applicationMapper.selectById(applicationId);
         if (application == null) {
-            throw BusinessException.APPLICATION_NOT_FOUND;
+            throw new BusinessException(ErrorCode.APPLICATION_NOT_FOUND);
         }
 
         if (!"pending".equals(application.getStatus())) {
-            throw BusinessException.APPLICATION_NOT_PENDING;
+            throw new BusinessException(ErrorCode.APPLICATION_NOT_PENDING);
         }
 
         // Update application status
@@ -167,7 +181,7 @@ public class AdoptionService {
         }
 
         applicationMapper.updateById(application);
-        log.info("Application {} reviewed by {}: {}", applicationId, adminId, request.getStatus());
+        System.out.println("Application " + applicationId + " reviewed by " + adminId + ": " + request.getStatus());
 
         // If approved, create adoption record
         if ("approved".equals(request.getStatus())) {
@@ -184,20 +198,20 @@ public class AdoptionService {
     public void cancel(String applicationId, String userId) {
         AdoptionApplication application = applicationMapper.selectById(applicationId);
         if (application == null) {
-            throw BusinessException.APPLICATION_NOT_FOUND;
+            throw new BusinessException(ErrorCode.APPLICATION_NOT_FOUND);
         }
 
         if (!userId.equals(application.getUserId())) {
-            throw BusinessException.FORBIDDEN;
+            throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
         if (!"pending".equals(application.getStatus())) {
-            throw BusinessException.APPLICATION_STATUS_ERROR;
+            throw new BusinessException(ErrorCode.APPLICATION_STATUS_ERROR);
         }
 
         application.setStatus("canceled");
         applicationMapper.updateById(application);
-        log.info("Application {} canceled by user {}", applicationId, userId);
+        System.out.println("Application " + applicationId + " canceled by user " + userId);
     }
 
     private void createAdoptionRecord(AdoptionApplication application) {
@@ -209,7 +223,7 @@ public class AdoptionService {
         record.setAdoptionDate(LocalDateTime.now());
 
         recordMapper.insert(record);
-        log.info("Adoption record created for application: {}", application.getId());
+        System.out.println("Adoption record created for application: " + application.getId());
     }
 
     private ApplicationVO toVO(AdoptionApplication application) {
@@ -231,26 +245,27 @@ public class AdoptionService {
             }
         }
 
-        return ApplicationVO.builder()
-                .id(application.getId())
-                .petId(application.getPetId())
-                .petName(mockPetName)
-                .petImage(mockPetImage)
-                .userId(application.getUserId())
-                .userName(mockUserName)
-                .userPhone(mockUserPhone)
-                .reason(application.getReason())
-                .livingCondition(application.getLivingCondition())
-                .experience(application.getExperience())
-                .hasOtherPets(application.getHasOtherPets())
-                .otherPetsDetail(application.getOtherPetsDetail())
-                .documents(documentList)
-                .livingConditionImages(imageList)
-                .status(application.getStatus())
-                .adminNotes(application.getAdminNotes())
-                .reviewedBy(application.getReviewedBy())
-                .reviewedAt(application.getReviewedAt())
-                .createdAt(application.getCreatedAt())
-                .build();
+        ApplicationVO vo = new ApplicationVO();
+        vo.setId(application.getId());
+        vo.setPetId(application.getPetId());
+        vo.setPetName(mockPetName);
+        vo.setPetImage(mockPetImage);
+        vo.setUserId(application.getUserId());
+        vo.setUserName(mockUserName);
+        vo.setUserPhone(mockUserPhone);
+        vo.setReason(application.getReason());
+        vo.setLivingCondition(application.getLivingCondition());
+        vo.setExperience(application.getExperience());
+        vo.setHasOtherPets(application.getHasOtherPets());
+        vo.setOtherPetsDetail(application.getOtherPetsDetail());
+        vo.setDocuments(documentList);
+        vo.setLivingConditionImages(imageList);
+        vo.setStatus(application.getStatus());
+        vo.setAdminNotes(application.getAdminNotes());
+        vo.setReviewedBy(application.getReviewedBy());
+        vo.setReviewedAt(application.getReviewedAt());
+        vo.setCreatedAt(application.getCreatedAt());
+
+        return vo;
     }
 }

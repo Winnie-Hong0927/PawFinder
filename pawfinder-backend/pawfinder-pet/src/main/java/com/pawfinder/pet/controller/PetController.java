@@ -9,16 +9,18 @@ import com.pawfinder.pet.service.PetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "宠物管理")
 @RestController
 @RequestMapping("/api/pet/v1/pets")
-@RequiredArgsConstructor
 public class PetController {
 
     private final PetService petService;
+
+    public PetController(PetService petService) {
+        this.petService = petService;
+    }
 
     @Operation(summary = "获取宠物列表")
     @GetMapping

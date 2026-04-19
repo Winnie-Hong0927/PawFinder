@@ -1,68 +1,66 @@
 package com.pawfinder.common.util;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import lombok.Data;
-
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.List;
 
 /**
- * Pagination wrapper
+ * Page result wrapper
  */
-@Data
-public class PageResult<T> implements Serializable {
+public class PageResult<T> {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
-
-    /**
-     * Total records
-     */
     private long total;
-
-    /**
-     * Current page
-     */
     private long current;
-
-    /**
-     * Page size
-     */
     private long size;
-
-    /**
-     * Total pages
-     */
     private long pages;
-
-    /**
-     * Records
-     */
     private List<T> records;
 
-    public static <T> PageResult<T> of(IPage<T> page) {
-        PageResult<T> result = new PageResult<>();
-        result.setTotal(page.getTotal());
-        result.setCurrent(page.getCurrent());
-        result.setSize(page.getSize());
-        result.setPages(page.getPages());
-        result.setRecords(page.getRecords());
-        return result;
+    public PageResult() {
     }
 
-    public static <T> PageResult<T> of(List<T> records, long total, long current, long size) {
-        PageResult<T> result = new PageResult<>();
-        result.setTotal(total);
-        result.setCurrent(current);
-        result.setSize(size);
-        result.setPages((total + size - 1) / size);
-        result.setRecords(records);
-        return result;
+    public PageResult(long total, long current, long size, long pages, List<T> records) {
+        this.total = total;
+        this.current = current;
+        this.size = size;
+        this.pages = pages;
+        this.records = records;
     }
 
-    public static <T> Page<T> toPage(long current, long size) {
-        return new Page<>(current, size);
+    public long getTotal() {
+        return total;
+    }
+
+    public void setTotal(long total) {
+        this.total = total;
+    }
+
+    public long getCurrent() {
+        return current;
+    }
+
+    public void setCurrent(long current) {
+        this.current = current;
+    }
+
+    public long getSize() {
+        return size;
+    }
+
+    public void setSize(long size) {
+        this.size = size;
+    }
+
+    public long getPages() {
+        return pages;
+    }
+
+    public void setPages(long pages) {
+        this.pages = pages;
+    }
+
+    public List<T> getRecords() {
+        return records;
+    }
+
+    public void setRecords(List<T> records) {
+        this.records = records;
     }
 }

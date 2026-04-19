@@ -8,16 +8,18 @@ import com.pawfinder.user.service.InstitutionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "机构管理")
 @RestController
 @RequestMapping("/api/user/v1/institutions")
-@RequiredArgsConstructor
 public class InstitutionController {
 
     private final InstitutionService institutionService;
+
+    public InstitutionController(InstitutionService institutionService) {
+        this.institutionService = institutionService;
+    }
 
     @Operation(summary = "获取机构列表")
     @GetMapping

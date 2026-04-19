@@ -1,11 +1,20 @@
 package com.pawfinder.pet.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
-
-@Data
+/**
+ * Pet status update request DTO
+ */
 public class PetStatusUpdateRequest {
 
-    @NotBlank(message = "状态不能为空")
     private String status;
+
+    public PetStatusUpdateRequest() {
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
 }
