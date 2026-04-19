@@ -8,7 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Heart, Gift, Users, Clock, CheckCircle, PawPrint, ArrowLeft, DollarSign, Package } from "lucide-react";
+import { Heart, Gift, Users, Clock, CheckCircle, PawPrint, ArrowLeft, DollarSign, Package, Phone, MapPin, Building2, Mail } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface Campaign {
   id: string;
@@ -19,6 +26,16 @@ interface Campaign {
   cover_image: string;
   status: string;
   created_at: string;
+}
+
+interface Institution {
+  id: string;
+  name: string;
+  description: string;
+  contact_phone: string;
+  contact_email: string;
+  address: string;
+  status: string;
 }
 
 const donationItems = [
@@ -35,6 +52,8 @@ export default function DonatePage() {
   const [loading, setLoading] = useState(true);
   const [selectedAmount, setSelectedAmount] = useState<string>("");
   const [customAmount, setCustomAmount] = useState("");
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
 
   useEffect(() => {
     fetchCampaigns();
@@ -52,6 +71,25 @@ export default function DonatePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchInstitutions = async () => {
+    try {
+      const response = await fetch("/api/institutions");
+      const data = await response.json();
+      if (data.success) {
+        // 只显示已审核通过的机构
+        const verified = data.institutions.filter((i: Institution) => i.status === "verified");
+        setInstitutions(verified);
+      }
+    } catch (error) {
+      console.error("Failed to fetch institutions:", error);
+    }
+  };
+
+  const handleShowContact = () => {
+    fetchInstitutions();
+    setShowContactModal(true);
   };
 
   const getProgress = (current: string, target: string) => {
@@ -292,7 +330,10 @@ export default function DonatePage() {
                       <span>通过邮寄或亲自送达的方式捐赠物资</span>
                     </li>
                   </ol>
-                  <Button className="mt-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white">
+                  <Button 
+                    className="mt-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white"
+                    onClick={handleShowContact}
+                  >
                     <Heart className="w-4 h-4 mr-2" />
                     联系我们
                   </Button>
@@ -300,6 +341,80 @@ export default function DonatePage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* 机构联系方式弹窗 */}
+          <Dialog open={showContactModal} onOpenChange={setShowContactModal}>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-xl flex items-center gap-2">
+                  <Phone className="w-5 h-5 text-orange-500" />
+                  联系我们
+                </DialogTitle>
+                <DialogDescription>
+                  以下是各合作机构的联系方式，您可以通过电话或实地拜访进行物资捐赠咨询
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4 mt-4">
+                {institutions.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">暂无可联系的机构</p>
+                ) : (
+                  institutions.map((institution) => (
+                    <div 
+                      key={institution.id} 
+                      className="border border-orange-200 rounded-lg p-4 hover:bg-orange-50 transition-colors"
+                    >
+                      <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                        <Building2 className="w-5 h-5 text-orange-500" />
+                        {institution.name}
+                      </h3>
+                      <div className="mt-3 space-y-2 text-sm">
+                        <p className="flex items-start gap-2 text-gray-600">
+                          <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                          <span>{institution.address || '地址待完善'}</span>
+                        </p>
+                        {institution.contact_phone && (
+                          <p className="flex items-center gap-2 text-gray-600">
+                            <Phone className="w-4 h-4 text-gray-400" />
+                            <a 
+                              href={`tel:${institution.contact_phone}`}
+                              className="text-orange-600 hover:text-orange-700 hover:underline"
+                            >
+                              {institution.contact_phone}
+                            </a>
+                          </p>
+                        )}
+                        {institution.contact_email && (
+                          <p className="flex items-center gap-2 text-gray-600">
+                            <Mail className="w-4 h-4 text-gray-400" />
+                            <a 
+                              href={`mailto:${institution.contact_email}`}
+                              className="text-orange-600 hover:text-orange-700 hover:underline"
+                            >
+                              {institution.contact_email}
+                            </a>
+                          </p>
+                        )}
+                        {institution.description && (
+                          <p className="text-gray-500 text-xs mt-2 border-t pt-2">
+                            {institution.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="mt-6 p-4 bg-orange-50 rounded-lg">
+                <p className="text-sm text-gray-600 text-center">
+                  <strong className="text-orange-600">温馨提示：</strong>
+                  捐赠前请先电话联系机构确认是否需要该物资，以及捐赠的具体时间和方式。
+                </p>
+              </div>
+            </DialogContent>
+          </Dialog>
+
         </Tabs>
       </div>
     </div>
