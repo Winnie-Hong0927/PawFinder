@@ -398,6 +398,46 @@ export default function PetDetailPage() {
           </CardContent>
         </Card>
 
+        {/* Image Gallery */}
+        {images.length > 0 && (
+          <Card className="border-0 shadow-sm bg-white mb-3">
+            <CardContent className="p-4">
+              <h3 className="text-sm font-medium text-gray-700 mb-3">宠物图集</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {images.map((img, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      setSelectedImage(index);
+                      setPreviewOpen(true);
+                    }}
+                    className="relative aspect-square rounded-lg overflow-hidden group"
+                  >
+                    <Image
+                      src={img}
+                      alt={`${pet.name} ${index + 1}`}
+                      fill
+                      className="object-cover transition-transform group-hover:scale-105"
+                      unoptimized
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors">
+                      <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                    {images.length > 1 && (
+                      <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
+                        {index + 1}/{images.length}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {images.length > 1 && (
+                <p className="text-xs text-gray-400 mt-2 text-center">点击图片查看大图</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Adoption Notice */}
         <Card className="border-0 shadow-sm bg-white">
           <CardContent className="p-4">
