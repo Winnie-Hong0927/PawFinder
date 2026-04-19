@@ -914,7 +914,7 @@ export default function AdminPage() {
                             <span className="text-gray-400 text-xs">{pet.breed || "-"}</span>
                           </div>
                         </TableCell>
-                        {isSysAdmin && <TableCell><Badge variant="outline">{pet.institution_name || pet.shelter_location || "-"}</Badge></TableCell>}
+                        {isSysAdmin && <TableCell><Badge variant="outline">{pet.shelter_location || pet.institution_name || "-"}</Badge></TableCell>}
                         <TableCell>
                           <Badge className={pet.status === "available" ? "bg-emerald-500" : pet.status === "pending" ? "bg-amber-500" : "bg-gray-500"}>
                             {getStatusText(pet.status)}
