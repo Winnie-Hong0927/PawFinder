@@ -121,9 +121,37 @@ export async function PATCH(
       }
     }
 
+    // Fetch related data for the response
+    let pet = null;
+    let user = null;
+
+    if (data.pet_id) {
+      const petRes = await supabase
+        .from("pets")
+        .select("*, institutions(name)")
+        .eq("id", data.pet_id)
+        .single();
+      pet = petRes.data;
+    }
+
+    if (data.user_id) {
+      const userRes = await supabase
+        .from("users")
+        .select("id, name, email, phone")
+        .eq("id", data.user_id)
+        .single();
+      user = userRes.data;
+    }
+
+    const enrichedApplication = {
+      ...data,
+      pet,
+      user,
+    };
+
     return NextResponse.json({
       success: true,
-      application: data,
+      application: enrichedApplication,
     });
   } catch (error: any) {
     console.error("Update application error:", error);

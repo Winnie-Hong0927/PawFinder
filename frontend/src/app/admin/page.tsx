@@ -553,7 +553,7 @@ export default function AdminPage() {
                         添加机构
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="max-h-[85vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>添加新机构</DialogTitle>
                         <DialogDescription>机构通过审核后，管理员才能注册并管理宠物</DialogDescription>
@@ -711,7 +711,7 @@ export default function AdminPage() {
                                     审核
                                   </Button>
                                 </DialogTrigger>
-                                <DialogContent>
+                                <DialogContent className="max-h-[85vh] overflow-y-auto">
                                   <DialogHeader>
                                     <DialogTitle>审核管理员申请</DialogTitle>
                                     <DialogDescription>请审核 {req.name} 的管理员申请</DialogDescription>
