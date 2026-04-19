@@ -24,10 +24,11 @@ import {
   Shield,
   CheckCircle,
   ArrowLeft,
-  Share2,
-  FileText,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  ZoomIn,
   Loader2,
-  CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -78,6 +79,7 @@ export default function PetDetailPage() {
   const [pet, setPet] = useState<Pet | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [previewOpen, setPreviewOpen] = useState(false);
   
   const [adoptionOpen, setAdoptionOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -93,16 +95,16 @@ export default function PetDetailPage() {
     const loadPet = async () => {
       try {
         let resolvedParams = params;
-        if (params && typeof params.then === 'function') {
+        if (params && typeof params.then === "function") {
           resolvedParams = await params;
         }
-        
+
         let petId: string | undefined;
-        if (resolvedParams && typeof resolvedParams === 'object' && 'id' in resolvedParams) {
-          const idValue = (resolvedParams as {id: string | string[]}).id;
+        if (resolvedParams && typeof resolvedParams === "object" && "id" in resolvedParams) {
+          const idValue = (resolvedParams as { id: string | string[] }).id;
           petId = Array.isArray(idValue) ? idValue[0] : idValue;
         }
-        
+
         if (petId) {
           const response = await fetch(`/api/pets/${petId}`);
           const data = await response.json();
@@ -116,7 +118,7 @@ export default function PetDetailPage() {
         setLoading(false);
       }
     };
-    
+
     loadPet();
   }, [params]);
 
@@ -130,16 +132,16 @@ export default function PetDetailPage() {
 
   const handleSubmitAdoption = async () => {
     if (!user || !pet) return;
-    
+
     if (!adoptionForm.reason || !adoptionForm.idCard) {
       alert("请填写必填项：领养理由和身份证号");
       return;
     }
 
     setSubmitting(true);
-    
+
     try {
-      const response = await fetch("/api/adoptions/apply", {
+      const response = await fetch("/api/applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -148,7 +150,7 @@ export default function PetDetailPage() {
         }),
       });
       const data = await response.json();
-      
+
       if (data.success) {
         setSubmitSuccess(true);
         setTimeout(() => {
@@ -170,6 +172,17 @@ export default function PetDetailPage() {
       setSubmitting(false);
     }
   };
+
+  const prevImage = () => {
+    setSelectedImage((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const nextImage = () => {
+    setSelectedImage((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+
+  const openPreview = () => setPreviewOpen(true);
+  const closePreview = () => setPreviewOpen(false);
 
   if (loading) {
     return (
@@ -195,8 +208,10 @@ export default function PetDetailPage() {
   }
 
   const images = pet.images?.length > 0 ? pet.images : ["/placeholder-pet.jpg"];
-  const statusColor = pet.status === "available" ? "bg-emerald-500" : pet.status === "pending" ? "bg-amber-500" : "bg-gray-400";
-  const statusLabel = pet.status === "available" ? "可领养" : pet.status === "pending" ? "待审核" : "已领养";
+  const statusColor =
+    pet.status === "available" ? "bg-emerald-500" : pet.status === "pending" ? "bg-amber-500" : "bg-gray-400";
+  const statusLabel =
+    pet.status === "available" ? "可领养" : pet.status === "pending" ? "待审核" : "已领养";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -214,57 +229,103 @@ export default function PetDetailPage() {
       <div className="max-w-4xl mx-auto px-4 py-4">
         {/* Top Section: Image + Basic Info side by side */}
         <div className="flex gap-4 mb-3">
-          {/* Left: Small Thumbnail Grid */}
-          <div className="w-32 flex-shrink-0">
-            <div className="grid grid-cols-2 gap-1.5">
-              {images.slice(0, 4).map((img, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={cn(
-                    "relative aspect-square rounded-lg overflow-hidden border-2",
-                    selectedImage === index ? "border-orange-400" : "border-gray-200"
-                  )}
-                >
-                  <Image src={img} alt="" fill className="object-cover" unoptimized />
-                </button>
-              ))}
-            </div>
-            {images.length > 4 && (
-              <p className="text-xs text-gray-400 mt-1 text-center">+{images.length - 4}张照片</p>
+          {/* Left: Image Gallery */}
+          <div className="w-40 flex-shrink-0">
+            {/* Main Thumbnail */}
+            <button
+              onClick={openPreview}
+              className="relative w-full aspect-square rounded-xl overflow-hidden border-2 border-gray-200 mb-2 group"
+            >
+              <Image
+                src={images[selectedImage]}
+                alt={pet.name}
+                fill
+                className="object-cover"
+                unoptimized
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center transition-colors">
+                <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              {/* Image counter badge */}
+              {images.length > 1 && (
+                <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full">
+                  {selectedImage + 1}/{images.length}
+                </div>
+              )}
+            </button>
+
+            {/* Thumbnail Strip */}
+            {images.length > 1 && (
+              <div className="flex gap-1.5 overflow-x-auto pb-1">
+                {images.map((img, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImage(index)}
+                    className={cn(
+                      "relative w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all",
+                      selectedImage === index
+                        ? "border-orange-400 ring-2 ring-orange-100"
+                        : "border-gray-200 hover:border-gray-300"
+                    )}
+                  >
+                    <Image src={img} alt="" fill className="object-cover" unoptimized />
+                  </button>
+                ))}
+              </div>
             )}
+
+            {/* Click hint */}
+            <p className="text-xs text-gray-400 mt-2 text-center">点击图片查看大图</p>
           </div>
-          
+
           {/* Right: Basic Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between mb-2">
               <div>
                 <h1 className="text-xl font-bold text-gray-800 leading-tight">{pet.name}</h1>
-                <p className="text-sm text-gray-500 mt-0.5">{speciesLabels[pet.species]}{pet.breed || "混血"} · {pet.age}</p>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {speciesLabels[pet.species]}
+                  {pet.breed || "混血"} · {pet.age}
+                </p>
               </div>
               <Badge className={cn("text-white text-xs px-2 py-0.5", statusColor)}>
                 {statusLabel}
               </Badge>
             </div>
-            
+
             {/* Quick tags */}
             <div className="flex flex-wrap gap-1.5 mb-2">
-              <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">{genderLabels[pet.gender]}</span>
-              <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">{sizeLabels[pet.size]}</span>
+              <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                {genderLabels[pet.gender]}
+              </span>
+              <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                {sizeLabels[pet.size]}
+              </span>
               {pet.traits?.slice(0, 2).map((trait, i) => (
-                <span key={i} className="text-xs px-2 py-0.5 bg-amber-50 text-amber-600 rounded">{trait}</span>
+                <span key={i} className="text-xs px-2 py-0.5 bg-amber-50 text-amber-600 rounded">
+                  {trait}
+                </span>
               ))}
             </div>
-            
+
             {/* Health & Location */}
             <div className="flex items-center gap-4 text-sm text-gray-400">
               {pet.vaccination_status && (
-                <span className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-emerald-500" />疫苗</span>
+                <span className="flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4 text-emerald-500" />
+                  疫苗
+                </span>
               )}
               {pet.sterilization_status && (
-                <span className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-emerald-500" />已绝育</span>
+                <span className="flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4 text-emerald-500" />
+                  已绝育
+                </span>
               )}
-              <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{pet.shelter_location?.slice(0, 12) || "待定"}</span>
+              <span className="flex items-center gap-1">
+                <MapPin className="w-4 h-4" />
+                {pet.shelter_location?.slice(0, 12) || "待定"}
+              </span>
             </div>
           </div>
         </div>
@@ -279,8 +340,8 @@ export default function PetDetailPage() {
                   {pet.adoption_fee === "0" || !pet.adoption_fee ? "免费" : `¥${pet.adoption_fee}`}
                 </span>
               </div>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 className="h-8 text-sm bg-gradient-to-r from-orange-500 to-amber-500 px-4"
                 disabled={pet.status !== "available"}
                 onClick={handleAdoptClick}
@@ -296,111 +357,204 @@ export default function PetDetailPage() {
         <Card className="border-0 shadow-sm bg-white mb-3">
           <CardContent className="p-4">
             <h3 className="text-sm font-medium text-gray-700 mb-2">详细介绍</h3>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              {pet.description || "暂无详细描述。"}
-            </p>
+            <p className="text-sm text-gray-600 leading-relaxed">{pet.description || "暂无详细描述"}</p>
           </CardContent>
         </Card>
 
-        {/* Requirements */}
+        {/* Health Status */}
         <Card className="border-0 shadow-sm bg-white mb-3">
           <CardContent className="p-4">
             <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
-              <Shield className="w-4 h-4 text-orange-400" />
-              领养须知
+              <Shield className="w-4 h-4 text-emerald-500" />
+              健康状况
             </h3>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• 年满18周岁，有稳定住所和收入</li>
-              <li>• 家人同意领养，愿意为宠物提供终身照料</li>
-              <li>• 按时接种疫苗，定期体检，科学喂养</li>
-              <li>• 接受定期回访</li>
-            </ul>
+            <div className="flex flex-wrap gap-2">
+              {pet.health_status?.split(/[,，]/).map((item, i) => (
+                <span key={i} className="text-xs px-2 py-1 bg-emerald-50 text-emerald-700 rounded">
+                  {item.trim()}
+                </span>
+              ))}
+              {!pet.health_status && (
+                <span className="text-xs text-gray-400">暂无健康信息</span>
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        {/* All Traits */}
-        {pet.traits && pet.traits.length > 0 && (
-          <Card className="border-0 shadow-sm bg-white">
-            <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">特征标签</h3>
-              <div className="flex flex-wrap gap-2">
-                {pet.traits.map((trait, i) => (
-                  <span key={i} className="text-sm px-2.5 py-1 bg-amber-50 text-amber-600 rounded-full">{trait}</span>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Traits */}
+        <Card className="border-0 shadow-sm bg-white mb-3">
+          <CardContent className="p-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">性格特点</h3>
+            <div className="flex flex-wrap gap-2">
+              {pet.traits?.map((trait, i) => (
+                <span key={i} className="text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded">
+                  {trait}
+                </span>
+              ))}
+              {!pet.traits?.length && (
+                <span className="text-xs text-gray-400">暂无性格信息</span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Adoption Notice */}
+        <Card className="border-0 shadow-sm bg-white">
+          <CardContent className="p-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">领养须知</h3>
+            <ul className="text-xs text-gray-500 space-y-1">
+              <li>• 领养人需年满18周岁，有固定住所和稳定收入</li>
+              <li>• 领养前需了解宠物习性，确保能够照顾好它</li>
+              <li>• 领养后需定期给宠物做体检和疫苗接种</li>
+              <li>• 领养费用将用于宠物医疗和救助</li>
+            </ul>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Image Preview Modal */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl p-0 bg-black/95 border-none">
+          <DialogHeader className="absolute top-0 left-0 right-0 z-10 p-4">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-white text-sm">
+                {pet.name} ({selectedImage + 1}/{images.length})
+              </DialogTitle>
+              <button
+                onClick={closePreview}
+                className="text-white hover:bg-white/20 rounded-full p-1 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </DialogHeader>
+
+          {/* Main Image */}
+          <div className="relative aspect-[4/3] flex items-center justify-center">
+            <Image
+              src={images[selectedImage]}
+              alt={pet.name}
+              fill
+              className="object-contain"
+              unoptimized
+            />
+
+            {/* Navigation Arrows */}
+            {images.length > 1 && (
+              <>
+                <button
+                  onClick={prevImage}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                <button
+                  onClick={nextImage}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Thumbnail Strip */}
+          {images.length > 1 && (
+            <div className="flex gap-2 p-4 justify-center overflow-x-auto">
+              {images.map((img, index) => (
+                <button
+                  key={index}
+                  onClick={() => setSelectedImage(index)}
+                  className={cn(
+                    "relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all",
+                    selectedImage === index ? "border-white scale-105" : "border-transparent opacity-60 hover:opacity-100"
+                  )}
+                >
+                  <Image src={img} alt="" fill className="object-cover" unoptimized />
+                </button>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Adoption Dialog */}
       <Dialog open={adoptionOpen} onOpenChange={setAdoptionOpen}>
         <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-1.5">
+              <Heart className="w-4 h-4 text-orange-500" />
+              申请领养 {pet.name}
+            </DialogTitle>
+            <DialogDescription className="text-[10px]">
+              请填写您的领养申请信息，机构审核后会与您联系
+            </DialogDescription>
+          </DialogHeader>
+
           {submitSuccess ? (
-            <div className="py-6 text-center">
-              <div className="w-12 h-12 mx-auto rounded-full bg-emerald-100 flex items-center justify-center mb-3">
-                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-              </div>
-              <h3 className="text-base font-bold text-gray-800">申请已提交！</h3>
-              <p className="text-xs text-gray-500 mt-1">我们将在1-3个工作日内审核</p>
+            <div className="text-center py-6">
+              <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
+              <p className="text-sm font-medium text-gray-800">申请已提交</p>
+              <p className="text-xs text-gray-500 mt-1">请等待机构审核，我们会尽快联系您</p>
             </div>
           ) : (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-sm flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-orange-500" />
-                  申请领养 - {pet?.name}
-                </DialogTitle>
-                <DialogDescription className="text-[10px]">
-                  请填写领养申请信息
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-2.5 py-1">
-                <div className="space-y-1">
-                  <Label htmlFor="reason" className="text-[11px]">领养理由 <span className="text-red-500">*</span></Label>
-                  <Textarea
-                    id="reason"
-                    placeholder="请告诉我们为什么想领养..."
-                    value={adoptionForm.reason}
-                    onChange={(e) => setAdoptionForm({ ...adoptionForm, reason: e.target.value })}
-                    rows={2}
-                    className="text-xs resize-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="idCard" className="text-[11px]">身份证号 <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="idCard"
-                    placeholder="18位身份证号"
-                    value={adoptionForm.idCard}
-                    onChange={(e) => setAdoptionForm({ ...adoptionForm, idCard: e.target.value })}
-                    maxLength={18}
-                    className="text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="livingCondition" className="text-[11px]">居住环境 <span className="text-gray-400">(选填)</span></Label>
-                  <Input
-                    id="livingCondition"
-                    placeholder="自有住房/租房..."
-                    value={adoptionForm.livingCondition}
-                    onChange={(e) => setAdoptionForm({ ...adoptionForm, livingCondition: e.target.value })}
-                    className="text-xs"
-                  />
-                </div>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs">
+                  领养理由 <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  value={adoptionForm.reason}
+                  onChange={(e) => setAdoptionForm({ ...adoptionForm, reason: e.target.value })}
+                  placeholder="请简单介绍一下您想领养这只宠物的原因..."
+                  className="mt-1 text-sm h-20"
+                />
               </div>
-              
-              <div className="flex gap-2 pt-1">
-                <Button size="sm" variant="outline" className="flex-1 text-xs h-8" onClick={() => setAdoptionOpen(false)}>取消</Button>
-                <Button size="sm" className="flex-1 text-xs h-8 bg-orange-500" onClick={handleSubmitAdoption} disabled={submitting}>
-                  {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : "提交申请"}
-                </Button>
+
+              <div>
+                <Label className="text-xs">居住环境</Label>
+                <Input
+                  value={adoptionForm.livingCondition}
+                  onChange={(e) => setAdoptionForm({ ...adoptionForm, livingCondition: e.target.value })}
+                  placeholder="如：自有住房/租房，有院子"
+                  className="mt-1 text-sm"
+                />
               </div>
-            </>
+
+              <div>
+                <Label className="text-xs">养宠经验</Label>
+                <Input
+                  value={adoptionForm.experience}
+                  onChange={(e) => setAdoptionForm({ ...adoptionForm, experience: e.target.value })}
+                  placeholder="如：养过猫狗，有经验"
+                  className="mt-1 text-sm"
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs">
+                  身份证号 <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  value={adoptionForm.idCard}
+                  onChange={(e) => setAdoptionForm({ ...adoptionForm, idCard: e.target.value })}
+                  placeholder="用于实名认证"
+                  className="mt-1 text-sm"
+                />
+              </div>
+
+              <Button
+                className="w-full bg-orange-500 hover:bg-orange-600 mt-2"
+                onClick={handleSubmitAdoption}
+                disabled={submitting}
+              >
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {submitting ? "提交中..." : "提交申请"}
+              </Button>
+            </div>
           )}
         </DialogContent>
-        </Dialog>
+      </Dialog>
     </div>
   );
 }
