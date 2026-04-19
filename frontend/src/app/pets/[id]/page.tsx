@@ -88,6 +88,7 @@ export default function PetDetailPage() {
   const [showPayment, setShowPayment] = useState(false);
   const [currentApplicationId, setCurrentApplicationId] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
+  const [applicationCount, setApplicationCount] = useState(0);
   const [adoptionForm, setAdoptionForm] = useState({
     reason: "",
     livingCondition: "",
@@ -126,6 +127,24 @@ export default function PetDetailPage() {
 
     loadPet();
   }, [params]);
+
+  // 获取申请人数
+  useEffect(() => {
+    const fetchApplicationCount = async () => {
+      if (!pet?.id) return;
+      try {
+        const response = await fetch(`/api/pets/${pet.id}`);
+        const data = await response.json();
+        if (data.success && data.application_count !== undefined) {
+          setApplicationCount(data.application_count);
+        }
+      } catch (error) {
+        console.error("Error fetching application count:", error);
+      }
+    };
+
+    fetchApplicationCount();
+  }, [pet?.id]);
 
   const handleAdoptClick = () => {
     if (!isAuthenticated) {
@@ -457,6 +476,14 @@ export default function PetDetailPage() {
                 {pet.status === "available" ? "申请领养" : "暂不可申请"}
               </Button>
             </div>
+            {/* 申请人数提示 */}
+            {applicationCount > 0 && pet.status === "available" && (
+              <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
+                <span className="text-xs text-gray-400">已有</span>
+                <span className="text-sm font-semibold text-orange-500">{applicationCount}</span>
+                <span className="text-xs text-gray-400">人申请领养此宠物，竞争激烈！</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 

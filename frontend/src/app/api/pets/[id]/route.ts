@@ -1,6 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const client = getSupabaseClient();
+
+    // 获取宠物信息
+    const { data: pet, error: petError } = await client
+      .from("pets")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (petError) {
+      throw new Error(`Failed to fetch pet: ${petError.message}`);
+    }
+
+    if (!pet) {
+      return NextResponse.json(
+        { error: "Pet not found" },
+        { status: 404 }
+      );
+    }
+
+    // 获取申请人数
+    const { count: applicationCount } = await client
+      .from("adoption_applications")
+      .select("*", { count: "exact", head: true })
+      .eq("pet_id", id);
+
+    return NextResponse.json({
+      success: true,
+      pet,
+      application_count: applicationCount || 0,
+    });
+  } catch (error) {
+    console.error("Get pet error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -147,41 +193,4 @@ export async function DELETE(
   }
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    
-    // Query from Supabase database
-    const client = getSupabaseClient();
-    const { data: pet, error } = await client
-      .from("pets")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
 
-    if (error) {
-      throw new Error(`Failed to fetch pet: ${error.message}`);
-    }
-
-    if (!pet) {
-      return NextResponse.json({
-        success: false,
-        error: "宠物不存在",
-      });
-    }
-
-    return NextResponse.json({
-      success: true,
-      pet,
-    });
-  } catch (error) {
-    console.error("Get pet error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
-  }
-}
