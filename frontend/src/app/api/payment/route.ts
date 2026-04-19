@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       format: 'JSON',
       charset: 'utf-8',
       sign_type: 'RSA2',
-      timestamp: new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14),
+      timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
       version: '1.0',
       biz_content: JSON.stringify({
         out_trade_no: outTradeNo,
