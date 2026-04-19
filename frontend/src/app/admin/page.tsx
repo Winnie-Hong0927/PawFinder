@@ -57,6 +57,7 @@ export default function AdminPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [editUploadedImages, setEditUploadedImages] = useState<string[]>([]);
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
 
   // Redirect if not admin
   useEffect(() => {
@@ -976,7 +977,14 @@ export default function AdminPage() {
                             <span>{app.pet?.name || "未知宠物"}</span>
                           </TableCell>
                           <TableCell>{app.user?.name || "未知用户"}</TableCell>
-                          <TableCell className="max-w-[200px] truncate">{app.reason}</TableCell>
+                          <TableCell className="max-w-[200px]">
+                            <button 
+                              onClick={() => setSelectedApplication(app)}
+                              className="text-blue-600 hover:text-blue-800 hover:underline text-left truncate block w-full"
+                            >
+                              {app.reason}
+                            </button>
+                          </TableCell>
                           <TableCell className="text-gray-500 text-sm">{new Date(app.created_at).toLocaleDateString()}</TableCell>
                           <TableCell>
                             <Badge className={app.status === "approved" ? "bg-emerald-500" : app.status === "rejected" ? "bg-red-500" : "bg-amber-500"}>
@@ -1189,6 +1197,91 @@ export default function AdminPage() {
             <Button variant="destructive" onClick={handleDeletePet}>
               确认删除
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 申请详情预览弹窗 */}
+      <Dialog open={!!selectedApplication} onOpenChange={(open) => !open && setSelectedApplication(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>领养申请详情</DialogTitle>
+          </DialogHeader>
+          {selectedApplication && (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-3">
+                {selectedApplication.pet?.images?.[0] && (
+                  <img src={selectedApplication.pet.images[0]} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                )}
+                <div>
+                  <p className="font-semibold">{selectedApplication.pet?.name || "未知宠物"}</p>
+                  <p className="text-sm text-gray-500">
+                    {selectedApplication.pet?.species === "dog" ? "狗狗" : selectedApplication.pet?.species === "cat" ? "猫咪" : "其他"}
+                    {selectedApplication.pet?.breed && ` · ${selectedApplication.pet.breed}`}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="border-t pt-4">
+                <p className="text-sm text-gray-500 mb-1">申请人</p>
+                <p className="font-medium">{selectedApplication.user?.name || "未知用户"}</p>
+                {selectedApplication.user?.phone && (
+                  <p className="text-sm text-gray-500">{selectedApplication.user.phone}</p>
+                )}
+              </div>
+
+              <div className="border-t pt-4">
+                <p className="text-sm text-gray-500 mb-1">申请理由</p>
+                <p className="text-gray-700 whitespace-pre-wrap">{selectedApplication.reason || "无"}</p>
+              </div>
+
+              {selectedApplication.living_condition && (
+                <div className="border-t pt-4">
+                  <p className="text-sm text-gray-500 mb-1">居住环境</p>
+                  <p className="text-gray-700">{selectedApplication.living_condition}</p>
+                </div>
+              )}
+
+              {selectedApplication.experience && (
+                <div className="border-t pt-4">
+                  <p className="text-sm text-gray-500 mb-1">养宠经验</p>
+                  <p className="text-gray-700">{selectedApplication.experience}</p>
+                </div>
+              )}
+
+              {selectedApplication.has_other_pets !== null && (
+                <div className="border-t pt-4">
+                  <p className="text-sm text-gray-500 mb-1">其他宠物</p>
+                  <p className="text-gray-700">{selectedApplication.has_other_pets ? "有" : "无"}</p>
+                </div>
+              )}
+
+              {selectedApplication.admin_notes && (
+                <div className="border-t pt-4">
+                  <p className="text-sm text-gray-500 mb-1">审核备注</p>
+                  <p className="text-gray-700">{selectedApplication.admin_notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedApplication(null)}>关闭</Button>
+            {selectedApplication?.status === "pending" && (
+              <Button variant="destructive" onClick={() => {
+                handleReviewApplication(selectedApplication.id, "rejected");
+                setSelectedApplication(null);
+              }}>
+                拒绝申请
+              </Button>
+            )}
+            {selectedApplication?.status === "pending" && (
+              <Button className="bg-emerald-500 hover:bg-emerald-600" onClick={() => {
+                handleReviewApplication(selectedApplication.id, "approved");
+                setSelectedApplication(null);
+              }}>
+                通过申请
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
