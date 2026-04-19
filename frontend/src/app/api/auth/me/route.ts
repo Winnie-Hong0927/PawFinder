@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { getCurrentSession } from "@/lib/session";
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.headers.get("x-user-id");
+    // 从会话获取用户信息
+    const session = await getCurrentSession();
     
-    if (!userId) {
+    if (!session) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -17,7 +19,7 @@ export async function GET(request: NextRequest) {
     const { data: user, error } = await client
       .from("users")
       .select("*")
-      .eq("id", userId)
+      .eq("id", session.userId)
       .maybeSingle();
 
     if (error) {
@@ -58,14 +60,17 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const userId = request.headers.get("x-user-id");
+    // 从会话获取用户信息
+    const session = await getCurrentSession();
     
-    if (!userId) {
+    if (!session) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
+    
+    const userId = session.userId;
 
     const body = await request.json();
     const client = getSupabaseClient();

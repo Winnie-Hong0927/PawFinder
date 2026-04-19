@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { getCurrentSession } from "@/lib/session";
 
 export async function GET(request: NextRequest) {
   try {
@@ -88,14 +89,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { pet_id, user_id, reason, living_condition, living_condition_images, experience, has_other_pets, other_pets_detail, documents } = body;
+    const { pet_id, reason, living_condition, living_condition_images, experience, has_other_pets, other_pets_detail, documents } = body;
 
-    if (!pet_id || !user_id) {
+    // 从后端会话获取用户信息
+    const session = await getCurrentSession();
+    if (!session) {
       return NextResponse.json(
-        { success: false, error: "宠物ID和用户ID不能为空" },
-        { status: 400 }
+        { success: false, error: "用户未登录或登录已过期，请重新登录" },
+        { status: 401 }
       );
     }
+
+    const user_id = session.userId;
 
     const supabase = getSupabaseClient();
 
@@ -136,20 +141,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user exists
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("id, name")
-      .eq("id", user_id)
-      .single();
-
-    if (userError || !userData) {
-      return NextResponse.json(
-        { success: false, error: "用户未登录或登录已过期，请重新登录" },
-        { status: 401 }
-      );
-    }
-
+    // Insert the application
     const { data, error } = await supabase
       .from("adoption_applications")
       .insert({

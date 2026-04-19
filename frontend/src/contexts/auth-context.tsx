@@ -31,18 +31,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check for existing auth on mount
+  // Check for existing auth on mount (check server session first)
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       try {
+        // First try to get from server session
+        const response = await fetch("/api/auth/me", {
+          credentials: "include"
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            setUser(data.user);
+            localStorage.setItem("user", JSON.stringify(data.user));
+            setIsLoading(false);
+            return;
+          }
+        }
+        
+        // Fall back to localStorage
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
           const userData = JSON.parse(storedUser);
           setUser(userData);
         }
       } catch (error) {
-        console.error("Failed to parse user data:", error);
-        localStorage.removeItem("user");
+        console.error("Failed to check auth:", error);
+        // Fall back to localStorage
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
+        }
       }
       setIsLoading(false);
     };
