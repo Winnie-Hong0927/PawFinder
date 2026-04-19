@@ -1,306 +1,221 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Heart, Gift, Users, Clock, CheckCircle, PawPrint, ArrowLeft, DollarSign, Package } from "lucide-react";
-
-interface Campaign {
-  id: string;
-  title: string;
-  description: string;
-  target_amount: string;
-  current_amount: string;
-  cover_image: string;
-  status: string;
-  created_at: string;
-}
-
-const donationItems = [
-  { icon: "🥫", name: "猫粮/狗粮", price: "¥50", description: "一袋优质宠物粮" },
-  { icon: "🧸", name: "宠物玩具", price: "¥30", description: "一个耐咬的玩具" },
-  { icon: "🛏️", name: "宠物窝", price: "¥100", description: "一个温暖的窝" },
-  { icon: "💊", name: "疫苗接种", price: "¥200", description: "一次疫苗接种" },
-  { icon: "🧴", name: "清洁用品", price: "¥40", description: "沐浴露、梳子等" },
-  { icon: "🎁", name: "爱心礼包", price: "¥500", description: "包含多种物资" },
-];
+import { useState } from 'react';
+import { useAuth } from '@/contexts/auth-context';
 
 export default function DonatePage() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedAmount, setSelectedAmount] = useState<string>("");
-  const [customAmount, setCustomAmount] = useState("");
+  const { user } = useAuth();
+  const [amount, setAmount] = useState('');
+  const [customAmount, setCustomAmount] = useState('');
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchCampaigns();
-  }, []);
+  const presetAmounts = [
+    { value: 10, label: '10元' },
+    { value: 50, label: '50元' },
+    { value: 100, label: '100元' },
+    { value: 200, label: '200元' },
+  ];
 
-  const fetchCampaigns = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    // 获取捐赠金额
+    const donateAmount = amount === 'custom' ? customAmount : amount;
+    
+    if (!donateAmount || parseFloat(donateAmount) <= 0) {
+      setError('请选择或输入捐赠金额');
+      return;
+    }
+
+    if (!user) {
+      setError('请先登录');
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      const response = await fetch("/api/donations/campaigns");
+      // 创建支付订单
+      const response = await fetch('/api/payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          outTradeNo: `DONATE_${Date.now()}_${user.id}`,
+          totalAmount: donateAmount,
+          subject: '爱心捐赠 - PawFinder',
+          body: message || '感谢您的爱心捐赠',
+          type: 'donation',
+          userId: user.id,
+        }),
+      });
+
       const data = await response.json();
-      if (data.success) {
-        setCampaigns(data.campaigns || []);
+
+      if (data.success && data.data.form) {
+        // 创建隐藏的form自动提交
+        const form = document.createElement('div');
+        form.innerHTML = data.data.form;
+        document.body.appendChild(form);
+        const payForm = form.querySelector('form') as HTMLFormElement;
+        if (payForm) {
+          payForm.submit();
+        }
+      } else {
+        setError(data.error || '支付创建失败');
       }
-    } catch (error) {
-      console.error("Failed to fetch campaigns:", error);
+    } catch (err) {
+      console.error('捐赠失败:', err);
+      setError('捐赠失败，请稍后重试');
     } finally {
       setLoading(false);
     }
   };
 
-  const getProgress = (current: string, target: string) => {
-    const currentNum = parseFloat(current || "0");
-    const targetNum = parseFloat(target || "0");
-    if (targetNum === 0) return 0;
-    return Math.min((currentNum / targetNum) * 100, 100);
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50/50 to-background">
-      {/* Hero - 修复颜色对比 */}
-      <div className="bg-gradient-to-r from-orange-500 to-amber-500 py-12 shadow-lg">
-        <div className="container mx-auto px-4">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white font-medium hover:bg-white/30 transition-colors mb-6"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>返回首页</span>
-          </Link>
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <Gift className="w-10 h-10 text-white" />
-              <h1 className="text-4xl font-bold text-white">爱心捐赠</h1>
-            </div>
-            <p className="text-orange-100 text-lg max-w-2xl mx-auto leading-relaxed">
-              您的每一份捐赠都将用于宠物救助、医疗和喂养。让我们一起为流浪动物创造更好的未来。
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 py-8">
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { icon: Users, value: "5,280+", label: "爱心捐赠人", color: "from-blue-400 to-blue-500" },
-            { icon: PawPrint, value: "2,500+", label: "受助宠物", color: "from-orange-400 to-amber-500" },
-            { icon: Heart, value: "98%", label: "善款利用率", color: "from-pink-400 to-rose-500" },
-            { icon: DollarSign, value: "¥500,000+", label: "累计善款", color: "from-emerald-400 to-green-500" },
-          ].map((item, i) => (
-            <Card key={i} className="border-orange-100 shadow-sm">
-              <CardContent className="p-4 text-center">
-                <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${item.color} flex items-center justify-center mx-auto mb-2`}>
-                  <item.icon className="w-5 h-5 text-white" />
-                </div>
-                <p className="text-xl font-bold text-gray-800">{item.value}</p>
-                <p className="text-sm text-gray-500">{item.label}</p>
-              </CardContent>
-            </Card>
-          ))}
+    <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white py-8">
+      <div className="max-w-2xl mx-auto px-4">
+        {/* 标题 */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">爱心捐赠</h1>
+          <p className="text-gray-600">每一份善意都将帮助更多流浪宠物找到温暖的家</p>
         </div>
 
-        <Tabs defaultValue="money">
-          <TabsList className="mb-8 bg-white p-1 rounded-xl shadow-sm">
-            <TabsTrigger value="money" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-lg px-6">
-              <Heart className="w-4 h-4" />
-              <span>资金捐赠</span>
-            </TabsTrigger>
-            <TabsTrigger value="goods" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-lg px-6">
-              <Gift className="w-4 h-4" />
-              <span>物资捐赠</span>
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Money Donation */}
-          <TabsContent value="money">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Donation Form */}
-              <div className="lg:col-span-2">
-                <Card className="border-orange-100 shadow-md">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-gray-800">
-                      <Heart className="w-5 h-5 text-orange-500" />
-                      奉献爱心
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Amount Selection */}
-                    <div className="space-y-3">
-                      <label className="text-sm font-semibold text-gray-700">
-                        选择金额
-                      </label>
-                      <div className="grid grid-cols-3 gap-3">
-                        {["50", "100", "200", "500", "1000", "2000"].map((amount) => (
-                          <Button
-                            key={amount}
-                            variant={selectedAmount === amount ? "default" : "outline"}
-                            onClick={() => {
-                              setSelectedAmount(amount);
-                              setCustomAmount("");
-                            }}
-                            className={
-                              selectedAmount === amount
-                                ? "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white border-0"
-                                : "border-orange-200 text-gray-700 hover:bg-orange-50"
-                            }
-                          >
-                            ¥{amount}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Custom Amount */}
-                    <div className="space-y-3">
-                      <label className="text-sm font-semibold text-gray-700">
-                        自定义金额
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
-                          ¥
-                        </span>
-                        <Input
-                          type="number"
-                          placeholder="输入金额"
-                          value={customAmount}
-                          onChange={(e) => {
-                            setCustomAmount(e.target.value);
-                            setSelectedAmount("");
-                          }}
-                          className="pl-8 border-orange-200 focus:border-orange-400 text-gray-800"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Selected Amount Display */}
-                    <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-6 text-center border border-orange-100">
-                      <p className="text-gray-500 mb-2 font-medium">您的捐赠金额</p>
-                      <p className="text-4xl font-bold text-orange-600">
-                        ¥{customAmount || selectedAmount || "0"}
-                      </p>
-                    </div>
-
-                    <Button
-                      size="lg"
-                      className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold shadow-md"
-                      disabled={!selectedAmount && !customAmount}
-                    >
-                      <Heart className="w-5 h-5 mr-2" />
-                      立即捐赠
-                    </Button>
-
-                    <p className="text-xs text-center text-gray-500">
-                      您的捐赠将帮助更多流浪动物获得关爱和照顾
-                    </p>
-                  </CardContent>
-                </Card>
+        {/* 捐赠卡片 */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+          <form onSubmit={handleSubmit}>
+            {/* 选择金额 */}
+            <div className="mb-6">
+              <label className="block text-gray-700 font-medium mb-3">选择捐赠金额</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {presetAmounts.map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => setAmount(item.value.toString())}
+                    className={`py-3 px-4 rounded-xl border-2 transition-all ${
+                      amount === item.value.toString() && amount !== 'custom'
+                        ? 'border-orange-500 bg-orange-50 text-orange-600'
+                        : 'border-gray-200 hover:border-orange-200 text-gray-700'
+                    }`}
+                  >
+                    <span className="font-semibold">{item.label}</span>
+                  </button>
+                ))}
               </div>
-
-              {/* Impact Stats */}
-              <div className="space-y-6">
-                <Card className="border-orange-100 shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="text-lg text-gray-800">您的爱心影响</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
-                      <span className="font-bold text-orange-600">¥50</span>
-                      <span className="text-sm text-gray-600">可喂养一只宠物一周</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
-                      <span className="font-bold text-orange-600">¥200</span>
-                      <span className="text-sm text-gray-600">可完成一次疫苗接种</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
-                      <span className="font-bold text-orange-600">¥500</span>
-                      <span className="text-sm text-gray-600">可资助一次绝育手术</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
-                      <span className="font-bold text-orange-600">¥1000</span>
-                      <span className="text-sm text-gray-600">可帮助一只宠物找到新家</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Trust Badges */}
-                <Card className="border-orange-100 shadow-sm">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-center gap-4 text-gray-500">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-5 h-5 text-emerald-500" />
-                        <span className="text-sm">正规机构</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-5 h-5 text-emerald-500" />
-                        <span className="text-sm">透明公开</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* Goods Donation */}
-          <TabsContent value="goods">
-            <Card className="border-orange-100 shadow-md">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-gray-800">
-                  <Package className="w-5 h-5 text-orange-500" />
-                  可捐赠物资
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {donationItems.map((item, index) => (
-                    <div
-                      key={index}
-                      className="p-4 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border border-orange-100 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-3xl">{item.icon}</span>
-                        <div>
-                          <h4 className="font-semibold text-gray-800">{item.name}</h4>
-                          <p className="text-lg font-bold text-orange-600">{item.price}</p>
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-500">{item.description}</p>
-                    </div>
-                  ))}
-                </div>
+              
+              {/* 自定义金额 */}
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setAmount('custom')}
+                  className={`w-full py-3 px-4 rounded-xl border-2 transition-all ${
+                    amount === 'custom'
+                      ? 'border-orange-500 bg-orange-50 text-orange-600'
+                      : 'border-gray-200 hover:border-orange-200 text-gray-700'
+                  }`}
+                >
+                  自定义金额
+                </button>
                 
-                <div className="mt-8 p-6 bg-orange-50 rounded-xl border border-orange-100">
-                  <h4 className="font-semibold text-gray-800 mb-2">如何捐赠物资？</h4>
-                  <ol className="space-y-2 text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-sm flex items-center justify-center flex-shrink-0">1</span>
-                      <span>选择您想捐赠的物资类型</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-sm flex items-center justify-center flex-shrink-0">2</span>
-                      <span>联系我们的工作人员确认捐赠详情</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-sm flex items-center justify-center flex-shrink-0">3</span>
-                      <span>通过邮寄或亲自送达的方式捐赠物资</span>
-                    </li>
-                  </ol>
-                  <Button className="mt-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white">
-                    <Heart className="w-4 h-4 mr-2" />
-                    联系我们
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                {amount === 'custom' && (
+                  <div className="mt-3 relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">¥</span>
+                    <input
+                      type="number"
+                      value={customAmount}
+                      onChange={(e) => setCustomAmount(e.target.value)}
+                      placeholder="请输入金额"
+                      min="1"
+                      step="0.01"
+                      className="w-full pl-8 pr-4 py-3 border-2 border-orange-500 rounded-xl focus:outline-none focus:border-orange-600"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 捐赠留言 */}
+            <div className="mb-6">
+              <label className="block text-gray-700 font-medium mb-3">
+                捐赠留言 <span className="text-gray-400 text-sm">(可选)</span>
+              </label>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="写下您想对毛孩子们说的话..."
+                rows={3}
+                maxLength={200}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 resize-none"
+              />
+              <p className="text-right text-gray-400 text-sm mt-1">{message.length}/200</p>
+            </div>
+
+            {/* 捐赠说明 */}
+            <div className="bg-orange-50 rounded-xl p-4 mb-6">
+              <h3 className="font-medium text-orange-800 mb-2">捐赠说明</h3>
+              <ul className="text-sm text-orange-700 space-y-1">
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  所有捐赠将用于流浪宠物的救助和照护
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  您的爱心将帮助更多宠物找到温暖的家
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  捐赠完成后可查看捐赠记录
+                </li>
+              </ul>
+            </div>
+
+            {/* 错误提示 */}
+            {error && (
+              <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl mb-4">
+                {error}
+              </div>
+            )}
+
+            {/* 提交按钮 */}
+            <button
+              type="submit"
+              disabled={loading || !amount || (amount === 'custom' && !customAmount)}
+              className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${
+                loading || !amount || (amount === 'custom' && !customAmount)
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl'
+              }`}
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  正在跳转支付...
+                </span>
+              ) : (
+                `立即捐赠 ${amount === 'custom' && customAmount ? `¥${customAmount}` : amount ? `¥${amount}` : ''}`
+              )}
+            </button>
+          </form>
+        </div>
+
+        {/* 底部提示 */}
+        <p className="text-center text-gray-400 text-sm mt-6">
+          支付由支付宝提供支持，交易安全有保障
+        </p>
       </div>
     </div>
   );

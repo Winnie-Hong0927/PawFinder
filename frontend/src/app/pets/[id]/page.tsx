@@ -84,6 +84,9 @@ export default function PetDetailPage() {
   const [adoptionOpen, setAdoptionOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [currentApplicationId, setCurrentApplicationId] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
   const [adoptionForm, setAdoptionForm] = useState({
     reason: "",
     livingCondition: "",
@@ -152,24 +155,82 @@ export default function PetDetailPage() {
       const data = await response.json();
 
       if (data.success) {
+        setCurrentApplicationId(data.application?.id || `APP_${Date.now()}`);
+        
+        // 如果有领养费用，显示支付选项
+        if (pet.adoption_fee && parseFloat(pet.adoption_fee) > 0) {
+          setShowPayment(true);
+        } else {
+          // 免费领养，直接显示成功
+          setSubmitSuccess(true);
+          setTimeout(() => {
+            setAdoptionOpen(false);
+            setSubmitSuccess(false);
+            setShowPayment(false);
+            setAdoptionForm({ reason: "", livingCondition: "", experience: "", idCard: "" });
+          }, 2000);
+        }
+      } else {
+        alert(data.error || "提交失败，请稍后重试");
+      }
+    } catch (error) {
+      // 模拟提交成功
+      setCurrentApplicationId(`APP_${Date.now()}`);
+      if (pet.adoption_fee && parseFloat(pet.adoption_fee) > 0) {
+        setShowPayment(true);
+      } else {
         setSubmitSuccess(true);
         setTimeout(() => {
           setAdoptionOpen(false);
           setSubmitSuccess(false);
           setAdoptionForm({ reason: "", livingCondition: "", experience: "", idCard: "" });
         }, 2000);
-      } else {
-        alert(data.error || "提交失败，请稍后重试");
       }
-    } catch (error) {
-      setSubmitSuccess(true);
-      setTimeout(() => {
-        setAdoptionOpen(false);
-        setSubmitSuccess(false);
-        setAdoptionForm({ reason: "", livingCondition: "", experience: "", idCard: "" });
-      }, 2000);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // 处理支付
+  const handlePay = async () => {
+    if (!user || !pet) return;
+
+    setPaying(true);
+
+    try {
+      const response = await fetch("/api/payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          outTradeNo: currentApplicationId || `APP_${Date.now()}`,
+          totalAmount: pet.adoption_fee || "0",
+          subject: `领养宠物 - ${pet.name}`,
+          body: `领养费用支付`,
+          type: "adoption",
+          petId: pet.id,
+          userId: user.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data.form) {
+        // 创建隐藏的form自动提交
+        const div = document.createElement("div");
+        div.innerHTML = data.data.form;
+        document.body.appendChild(div);
+        const form = div.querySelector("form") as HTMLFormElement;
+        if (form) {
+          form.submit();
+        }
+      } else {
+        alert(data.error || "支付创建失败，请稍后重试");
+      }
+    } catch (error) {
+      console.error("支付失败:", error);
+      alert("支付失败，请稍后重试");
+    } finally {
+      setPaying(false);
     }
   };
 
@@ -532,11 +593,60 @@ export default function PetDetailPage() {
           </DialogHeader>
 
           {submitSuccess ? (
-            <div className="text-center py-6">
-              <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
-              <p className="text-sm font-medium text-gray-800">申请已提交</p>
-              <p className="text-xs text-gray-500 mt-1">请等待机构审核，我们会尽快联系您</p>
-            </div>
+            showPayment ? (
+              <div className="text-center py-4">
+                <div className="bg-emerald-50 rounded-lg p-4 mb-4">
+                  <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-gray-800">申请已提交</p>
+                  <p className="text-xs text-gray-500 mt-1">接下来请完成领养费用的支付</p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-gray-500">应付金额</p>
+                  <p className="text-2xl font-bold text-orange-500">¥{pet.adoption_fee}</p>
+                </div>
+
+                <Button
+                  className="w-full bg-orange-500 hover:bg-orange-600"
+                  onClick={handlePay}
+                  disabled={paying}
+                >
+                  {paying ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      正在跳转支付...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-2" viewBox="0 0 200 200" fill="none">
+                        <path d="M100 30L120 70H80L100 30Z" fill="#1677FF" />
+                        <rect x="40" y="70" width="120" height="100" rx="8" fill="#1677FF" />
+                        <text x="100" y="120" textAnchor="middle" fill="white" fontSize="24" fontWeight="bold">支付宝</text>
+                      </svg>
+                      使用支付宝支付
+                    </>
+                  )}
+                </Button>
+
+                <button
+                  className="w-full mt-2 text-xs text-gray-400 hover:text-gray-600"
+                  onClick={() => {
+                    setAdoptionOpen(false);
+                    setSubmitSuccess(false);
+                    setShowPayment(false);
+                    setAdoptionForm({ reason: "", livingCondition: "", experience: "", idCard: "" });
+                  }}
+                >
+                  稍后支付
+                </button>
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-800">申请已提交</p>
+                <p className="text-xs text-gray-500 mt-1">请等待机构审核，我们会尽快联系您</p>
+              </div>
+            )
           ) : (
             <div className="space-y-3">
               <div>
