@@ -5,6 +5,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const species = searchParams.get("species");
+    const size = searchParams.get("size");
+    const gender = searchParams.get("gender");
     const status = searchParams.get("status") || "available";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "12");
@@ -19,6 +21,12 @@ export async function GET(request: NextRequest) {
 
     if (species) {
       query = query.eq("species", species);
+    }
+    if (size) {
+      query = query.eq("size", size);
+    }
+    if (gender) {
+      query = query.eq("gender", gender);
     }
 
     const { data: pets, error, count } = await query;

@@ -55,7 +55,7 @@ export default function PetsPage() {
 
   useEffect(() => {
     fetchPets();
-  }, [species]);
+  }, [species, size, gender]);
 
   const fetchPets = async () => {
     setLoading(true);
@@ -66,6 +66,8 @@ export default function PetsPage() {
         limit: "12",
       });
       if (species) params.append("species", species);
+      if (size) params.append("size", size);
+      if (gender) params.append("gender", gender);
 
       const response = await fetch(`/api/pets?${params}`);
       const data = await response.json();
