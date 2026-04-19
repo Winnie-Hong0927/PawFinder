@@ -329,11 +329,15 @@ export default function AdminPage() {
 
   const handleUpdatePet = async () => {
     try {
-      const imagesArray = editPetForm.images.split("\n").map(url => url.trim()).filter(url => url);
+      // 使用已上传的图片URL
+      const imagesArray = editUploadedImages.length > 0 ? editUploadedImages : [];
 
       const res = await fetch(`/api/pets/${editPetForm.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-id": user?.id || "",
+        },
         body: JSON.stringify({
           name: editPetForm.name,
           species: editPetForm.species,
@@ -356,6 +360,7 @@ export default function AdminPage() {
         alert(data.error || "更新失败");
       }
     } catch (error) {
+      console.error("Update pet error:", error);
       alert("更新宠物失败");
     }
   };
@@ -1054,13 +1059,22 @@ export default function AdminPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>宠物图片URL（每行一个）</Label>
-              <Textarea value={editPetForm.images} onChange={e => setEditPetForm({ ...editPetForm, images: e.target.value })} placeholder="每行一个图片URL" />
+              <Label>宠物图片</Label>
+              <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center">
+                <input type="file" accept="image/*" multiple onChange={e => handleUploadImage(e, true)} className="hidden" id="edit-pet-upload" />
+                <label htmlFor="edit-pet-upload" className="cursor-pointer flex flex-col items-center">
+                  <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                  <span className="text-sm text-gray-500">点击上传图片</span>
+                </label>
+              </div>
               {editUploadedImages.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {editUploadedImages.map((url, idx) => (
                     <div key={idx} className="relative group">
-                      <img src={url} alt="" className="w-16 h-16 object-cover rounded-lg" />
+                      <img src={url} alt="" className="w-20 h-20 object-cover rounded-lg" />
+                      <button onClick={() => handleRemoveImage(idx, true)} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center">
+                        <X className="w-3 h-3" />
+                      </button>
                     </div>
                   ))}
                 </div>
