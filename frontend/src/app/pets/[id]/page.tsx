@@ -29,6 +29,7 @@ import {
   X,
   ZoomIn,
   Loader2,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -712,7 +713,7 @@ export default function PetDetailPage() {
                   {/* 图片上传 */}
                   <div className="flex items-center gap-2">
                     <label className="cursor-pointer inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-md text-xs">
-                      <Upload className="w-3 h-3" />
+                      <Plus className="w-4 h-4" />
                       上传图片
                       <input
                         type="file"
