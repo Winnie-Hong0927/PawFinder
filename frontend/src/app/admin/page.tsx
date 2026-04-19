@@ -795,6 +795,9 @@ export default function AdminPage() {
                             <select className="w-full h-10 px-3 border rounded-lg" value={addPetForm.species} onChange={e => setAddPetForm({ ...addPetForm, species: e.target.value })}>
                               <option value="dog">狗</option>
                               <option value="cat">猫</option>
+                              <option value="rabbit">兔</option>
+                              <option value="hamster">仓鼠</option>
+                              <option value="bird">鸟</option>
                               <option value="other">其他</option>
                             </select>
                           </div>
