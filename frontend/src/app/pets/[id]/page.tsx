@@ -188,8 +188,15 @@ export default function PetDetailPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          petId: pet.id,
-          ...adoptionForm,
+          pet_id: params.id,
+          user_id: user.id,
+          reason: adoptionForm.reason,
+          living_condition: adoptionForm.living_condition,
+          living_condition_images: adoptionForm.living_condition_images || [],
+          experience: adoptionForm.experience,
+          has_other_pets: adoptionForm.has_other_pets,
+          other_pets_detail: adoptionForm.other_pets_detail,
+          documents: adoptionForm.documents || [],
         }),
       });
       const data = await response.json();
