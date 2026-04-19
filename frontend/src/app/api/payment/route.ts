@@ -1,227 +1,194 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// 支付宝配置
-const ALIPAY_CONFIG = {
-  appId: process.env.ALIPAY_APP_ID || '',
-  privateKey: formatPrivateKey(process.env.ALIPAY_PRIVATE_KEY || ''),
-  alipayPublicKey: formatPublicKey(process.env.ALIPAY_PUBLIC_KEY || ''),
-  gateway: process.env.ALIPAY_GATEWAY || 'https://openapi-sandbox.dl.alipaydev.com/gateway.do',
-  returnUrl: process.env.ALIPAY_RETURN_URL || 'http://localhost:5000',
-};
+// 强制使用 OpenSSL 旧版提供程序以兼容 RSA 密钥
+process.env.NODE_OPTIONS = (process.env.NODE_OPTIONS || '') + ' --openssl-legacy-provider';
 
-// 格式化私钥（添加PEM头尾如果缺失）
+const ALIPAY_APP_ID = process.env.ALIPAY_APP_ID || '';
+const ALIPAY_PRIVATE_KEY = process.env.ALIPAY_PRIVATE_KEY || '';
+const ALIPAY_PUBLIC_KEY = process.env.ALIPAY_PUBLIC_KEY || '';
+const ALIPAY_GATEWAY = process.env.ALIPAY_GATEWAY || 'https://openapi-sandbox.dl.alipaydev.com/gateway.do';
+
+// 格式化私钥
 function formatPrivateKey(key: string): string {
   if (!key) return '';
+  // 如果已经是 PEM 格式，直接返回
   if (key.includes('-----BEGIN')) return key;
+  // 否则包装成 PEM 格式
   return `-----BEGIN PRIVATE KEY-----\n${key}\n-----END PRIVATE KEY-----`;
 }
 
-// 格式化公钥（添加PEM头尾如果缺失）
+// 格式化公钥
 function formatPublicKey(key: string): string {
   if (!key) return '';
   if (key.includes('-----BEGIN')) return key;
   return `-----BEGIN PUBLIC KEY-----\n${key}\n-----END PUBLIC KEY-----`;
 }
 
-// RSA2签名函数
-function sign(params: Record<string, string>): string | null {
-  if (!ALIPAY_CONFIG.privateKey) {
-    console.log('Missing private key');
-    return null;
+// 创建 AlipayFormData 类
+class AlipayFormData {
+  private fields: Map<string, string> = new Map();
+  private files: Map<string, string> = new Map();
+
+  addField(key: string, value: string): void {
+    this.fields.set(key, value);
   }
-  
-  try {
-    const signString = Object.keys(params)
-      .sort()
-      .map(key => `${key}=${params[key]}`)
-      .join('&');
-    
-    const sign = crypto.createSign('RSA-SHA256');
-    sign.update(signString);
-    return sign.sign(ALIPAY_CONFIG.privateKey, 'base64');
-  } catch (error) {
-    console.error('签名失败:', error);
-    return null;
+
+  addFile(key: string, value: string): void {
+    this.files.set(key, value);
   }
+
+  getFields(): Map<string, string> {
+    return this.fields;
+  }
+
+  getFiles(): Map<string, string> {
+    return this.files;
+  }
+}
+
+// 简单的签名函数
+function sign(
+  params: Record<string, string>,
+  privateKey: string,
+  signType: string = 'RSA2'
+): string {
+  const signContent = Object.keys(params)
+    .filter(key => params[key] !== undefined && params[key] !== '')
+    .sort()
+    .map(key => `${key}=${params[key]}`)
+    .join('&');
+
+  const sign = crypto.createSign(signType === 'RSA2' ? 'RSA-SHA256' : 'RSA-SHA1');
+  sign.update(signContent);
+  return sign.sign(privateKey, 'base64');
 }
 
 // 验证签名
-function verifySign(params: Record<string, string>): boolean {
-  const signStr = params.sign;
-  if (!signStr || !ALIPAY_CONFIG.alipayPublicKey) {
-    return false;
+function verify(
+  params: Record<string, string>,
+  sign: string,
+  publicKey: string,
+  signType: string = 'RSA2'
+): boolean {
+  const signContent = Object.keys(params)
+    .filter(key => params[key] !== undefined && params[key] !== '' && key !== 'sign' && key !== 'sign_type')
+    .sort()
+    .map(key => `${key}=${params[key]}`)
+    .join('&');
+
+  const verify = crypto.createVerify(signType === 'RSA2' ? 'RSA-SHA256' : 'RSA-SHA1');
+  verify.update(signContent);
+  return verify.verify(publicKey, sign, 'base64');
+}
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const outTradeNo = searchParams.get('outTradeNo') || `DONATE${Date.now()}`;
+  const totalAmount = searchParams.get('totalAmount') || '10';
+  const subject = searchParams.get('subject') || '爱心捐赠';
+  const type = searchParams.get('type') || 'donate';
+
+  if (!ALIPAY_APP_ID || !ALIPAY_PRIVATE_KEY) {
+    return NextResponse.json(
+      { success: false, error: '支付宝配置不完整' },
+      { status: 500 }
+    );
   }
-  
+
   try {
-    delete params.sign;
-    const verifyString = Object.keys(params)
-      .sort()
-      .map(key => `${key}=${params[key]}`)
+    const timestamp = new Date().format('yyyyMMddHHmmss');
+    const bizContent: Record<string, string> = {
+      out_trade_no: outTradeNo,
+      total_amount: totalAmount,
+      subject: subject,
+      body: subject,
+      product_code: 'QUICK_WAP_WAY',
+      quit_url: process.env.ALIPAY_RETURN_URL || 'http://localhost:5000',
+    };
+
+    const publicParams: Record<string, string> = {
+      app_id: ALIPAY_APP_ID,
+      method: 'alipay.trade.wap.pay',
+      format: 'JSON',
+      charset: 'utf-8',
+      sign_type: 'RSA2',
+      timestamp,
+      version: '1.0',
+      biz_content: JSON.stringify(bizContent),
+    };
+
+    // 计算签名
+    const signStr = sign(publicParams, formatPrivateKey(ALIPAY_PRIVATE_KEY), 'RSA2');
+    publicParams.sign = signStr;
+
+    // 构建网关 URL
+    const queryString = Object.keys(publicParams)
+      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(publicParams[key])}`)
       .join('&');
-    
-    const verify = crypto.createVerify('RSA-SHA256');
-    verify.update(verifyString);
-    return verify.verify(ALIPAY_CONFIG.alipayPublicKey, signStr, 'base64');
+
+    const redirectUrl = `${ALIPAY_GATEWAY}?${queryString}`;
+
+    return NextResponse.json({
+      success: true,
+      data: { redirectUrl, outTradeNo },
+    });
   } catch (error) {
-    console.error('验签失败:', error);
-    return false;
+    console.error('支付宝支付创建失败:', error);
+    return NextResponse.json(
+      { success: false, error: '支付创建失败' },
+      { status: 500 }
+    );
   }
 }
 
-// 创建支付订单
+// POST 请求处理
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { 
-      outTradeNo,        // 商户订单号
-      totalAmount,       // 订单金额
-      subject,           // 订单标题
-      body: orderBody,   // 订单描述
-      type,              // 支付类型: adoption(领养) / donation(捐赠)
-      petId,             // 宠物ID（领养时）
-      userId,            // 用户ID
-    } = body;
+    const { outTradeNo, totalAmount, subject, type } = body;
 
-    // 验证必要参数
-    if (!outTradeNo || !totalAmount || !subject) {
-      return NextResponse.json({
-        success: false,
-        error: '缺少必要参数',
-      }, { status: 400 });
-    }
-
-    // 构建业务扩展参数
-    const businessParams = JSON.stringify({
-      type,
-      petId,
-      userId,
-    });
-
-    // 构建请求参数
-    const params: Record<string, string> = {
-      app_id: ALIPAY_CONFIG.appId,
-      method: 'alipay.trade.wap.pay',
-      format: 'JSON',
-      charset: 'utf-8',
-      sign_type: 'RSA2',
-      timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
-      version: '1.0',
-      biz_content: JSON.stringify({
-        out_trade_no: outTradeNo,
-        total_amount: String(totalAmount),
-        subject,
-        body: orderBody || subject,
-        product_code: 'QUICK_WAP_WAY',
-        quit_url: ALIPAY_CONFIG.returnUrl,
-        passback_params: encodeURIComponent(businessParams),
-      }),
+    const requestData = {
+      outTradeNo: outTradeNo || `DONATE${Date.now()}`,
+      totalAmount: totalAmount || '10',
+      subject: subject || '爱心捐赠',
+      type: type || 'donate',
     };
 
-    // 添加签名
-    const signature = sign(params);
-    if (!signature) {
-      return NextResponse.json({
-        success: false,
-        error: '签名失败，请检查配置',
-      }, { status: 500 });
-    }
-    params.sign = signature;
-
-    // 构建表单
-    const formHtml = `
-      <form id="alipayForm" action="${ALIPAY_CONFIG.gateway}" method="post">
-        ${Object.keys(params).map(key => 
-          `<input type="hidden" name="${key}" value="${params[key].replace(/"/g, '&quot;')}" />`
-        ).join('')}
-      </form>
-      <script>document.getElementById('alipayForm').submit();</script>
-    `;
-
-    // 返回支付表单
-    return NextResponse.json({
-      success: true,
-      data: {
-        form: formHtml,
-        outTradeNo,
-      },
-    });
-
+    // 重定向到 GET 请求
+    const queryString = new URLSearchParams(requestData).toString();
+    return NextResponse.redirect(new URL(`/api/payment?${queryString}`, request.url));
   } catch (error) {
-    console.error('支付创建失败:', error);
-    return NextResponse.json({
-      success: false,
-      error: '支付创建失败',
-    }, { status: 500 });
+    console.error('支付请求处理失败:', error);
+    return NextResponse.json(
+      { success: false, error: '支付请求处理失败' },
+      { status: 500 }
+    );
   }
 }
 
-// 获取支付链接（用于重定向）
-export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams;
-    const outTradeNo = searchParams.get('outTradeNo') || `ORDER_${Date.now()}`;
-    const totalAmount = searchParams.get('totalAmount') || '0.01';
-    const subject = searchParams.get('subject') || '支付';
-    const type = searchParams.get('type') || 'donate';
-    const petId = searchParams.get('petId');
-    const userId = searchParams.get('userId');
-
-    // 构建业务扩展参数
-    const businessParams = JSON.stringify({
-      type,
-      petId,
-      userId,
-    });
-
-    // 构建请求参数
-    const params: Record<string, string> = {
-      app_id: ALIPAY_CONFIG.appId,
-      method: 'alipay.trade.wap.pay',
-      format: 'JSON',
-      charset: 'utf-8',
-      sign_type: 'RSA2',
-      timestamp: new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14),
-      version: '1.0',
-      biz_content: JSON.stringify({
-        out_trade_no: outTradeNo,
-        total_amount: totalAmount,
-        subject,
-        body: subject,
-        product_code: 'QUICK_WAP_WAY',
-        quit_url: ALIPAY_CONFIG.returnUrl,
-        passback_params: encodeURIComponent(businessParams),
-      }),
-    };
-
-    // 添加签名
-    const signature = sign(params);
-    if (!signature) {
-      return NextResponse.json({
-        success: false,
-        error: '签名失败，请检查配置',
-      }, { status: 500 });
-    }
-    params.sign = signature;
-
-    // 构建重定向URL
-    const redirectUrl = `${ALIPAY_CONFIG.gateway}?${Object.keys(params)
-      .map(key => `${key}=${encodeURIComponent(params[key])}`)
-      .join('&')}`;
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        redirectUrl,
-        outTradeNo,
-      },
-    });
-
-  } catch (error) {
-    console.error('支付创建失败:', error);
-    return NextResponse.json({
-      success: false,
-      error: '支付创建失败',
-    }, { status: 500 });
+// 时间格式化扩展
+declare global {
+  interface Date {
+    format(format: string): string;
   }
+}
+
+if (typeof Date.prototype.format === 'undefined') {
+  Date.prototype.format = function(format: string): string {
+    const year = this.getFullYear();
+    const month = String(this.getMonth() + 1).padStart(2, '0');
+    const day = String(this.getDate()).padStart(2, '0');
+    const hours = String(this.getHours()).padStart(2, '0');
+    const minutes = String(this.getMinutes()).padStart(2, '0');
+    const seconds = String(this.getSeconds()).padStart(2, '0');
+
+    return format
+      .replace('yyyy', String(year))
+      .replace('MM', month)
+      .replace('dd', day)
+      .replace('HH', hours)
+      .replace('mm', minutes)
+      .replace('ss', seconds);
+  };
 }
