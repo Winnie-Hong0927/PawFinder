@@ -42,7 +42,7 @@ export default function DonatePage() {
 
   const fetchCampaigns = async () => {
     try {
-      const response = await fetch("/api/donations/campaigns");
+      const response = await fetch("/api/donations");
       const data = await response.json();
       if (data.success) {
         setCampaigns(data.campaigns || []);
