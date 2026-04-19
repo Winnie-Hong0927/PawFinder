@@ -23,6 +23,8 @@ import {
   MapPin,
   Shield,
   CheckCircle,
+  Building2,
+  Users,
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
