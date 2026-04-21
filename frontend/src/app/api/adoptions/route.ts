@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_ENDPOINTS } from '@/lib/api-config';
 
-// 通用请求方法
+/**
+ * 通用后端请求方法
+ */
 async function requestBackend<T>(
   url: string,
   options: RequestInit = {},
@@ -34,7 +36,10 @@ async function requestBackend<T>(
   return response.json();
 }
 
-// GET /api/adoptions - 获取我的领养列表
+/**
+ * GET /api/adoptions - 获取我的领养列表
+ * 前端代理层，转发到后端领养服务
+ */
 export async function GET(request: NextRequest) {
   try {
     const userId = request.headers.get("x-user-id");
@@ -52,7 +57,8 @@ export async function GET(request: NextRequest) {
       data: any[];
     }>(API_ENDPOINTS.myAdoptions, { method: 'GET' }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success', data: [...] }
+    if (result.code !== 200) {
       return NextResponse.json(
         { error: result.message || '获取领养列表失败' },
         { status: 400 }
@@ -64,7 +70,7 @@ export async function GET(request: NextRequest) {
       applications: result.data,
     });
   } catch (error) {
-    console.error("Get adoptions error:", error);
+    console.error("Get adoptions proxy error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -72,7 +78,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/adoptions - 创建领养申请
+/**
+ * POST /api/adoptions - 创建领养申请
+ * 前端代理层，转发到后端领养服务
+ */
 export async function POST(request: NextRequest) {
   try {
     const userId = request.headers.get("x-user-id");
@@ -85,7 +94,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { pet_id, reason, living_condition, experience, has_other_pets, other_pets_detail, documents } = body;
+    const { pet_id, reason, living_condition, living_condition_images, experience, has_other_pets, other_pets_detail, documents } = body;
 
     if (!pet_id) {
       return NextResponse.json(
@@ -94,7 +103,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 调用 applications API 创建申请
+    // 调用后端创建申请
     const result = await requestBackend<{
       code: number;
       message: string;
@@ -102,17 +111,19 @@ export async function POST(request: NextRequest) {
     }>(API_ENDPOINTS.applications, {
       method: 'POST',
       body: JSON.stringify({
-        pet_id,
+        petId: pet_id,
         reason,
-        living_condition,
+        livingCondition: living_condition,
+        livingConditionImages: living_condition_images,
         experience,
-        has_other_pets,
-        other_pets_detail,
+        hasOtherPets: has_other_pets,
+        otherPetsDetail: other_pets_detail,
         documents: documents || [],
       }),
     }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success', data: 'applicationId' }
+    if (result.code !== 200) {
       return NextResponse.json(
         { success: false, error: result.message || '创建申请失败' },
         { status: 400 }
@@ -124,7 +135,7 @@ export async function POST(request: NextRequest) {
       applicationId: result.data,
     });
   } catch (error) {
-    console.error("Create adoption error:", error);
+    console.error("Create adoption proxy error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

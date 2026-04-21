@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_ENDPOINTS } from '@/lib/api-config';
 
-// 通用请求方法
+/**
+ * 通用后端请求方法
+ */
 async function requestBackend<T>(
   url: string,
   options: RequestInit = {},
@@ -34,7 +36,10 @@ async function requestBackend<T>(
   return response.json();
 }
 
-// GET /api/auth/me - 获取当前用户信息
+/**
+ * GET /api/auth/me - 获取当前用户信息
+ * 前端代理层，转发到后端用户服务
+ */
 export async function GET(request: NextRequest) {
   try {
     const userId = request.headers.get("x-user-id");
@@ -52,7 +57,8 @@ export async function GET(request: NextRequest) {
       data: any;
     }>(API_ENDPOINTS.userInfo, { method: 'GET' }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success', data: {...} }
+    if (result.code !== 200) {
       return NextResponse.json(
         { error: result.message || '获取用户信息失败' },
         { status: 401 }
@@ -75,7 +81,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Get user error:", error);
+    console.error("Get user proxy error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -83,7 +89,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PUT /api/auth/me - 更新当前用户信息
+/**
+ * PUT /api/auth/me - 更新当前用户信息
+ * 前端代理层，转发到后端用户服务
+ */
 export async function PUT(request: NextRequest) {
   try {
     const userId = request.headers.get("x-user-id");
@@ -97,53 +106,30 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
 
-    // 只允许更新特定字段
-    const allowedFields = ["name", "email", "avatar_url", "bio", "address"];
-    const updateData: Record<string, string | null> = {};
-    
-    for (const field of allowedFields) {
-      if (body[field] !== undefined) {
-        updateData[field] = body[field];
-      }
-    }
-
+    // 只允许更新特定字段（业务逻辑在后端，这里只是简单转发）
     const result = await requestBackend<{
       code: number;
       message: string;
+      data: any;
     }>(API_ENDPOINTS.updateUser, {
       method: 'PUT',
-      body: JSON.stringify(updateData),
+      body: JSON.stringify(body),
     }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success', data: {...} }
+    if (result.code !== 200) {
       return NextResponse.json(
         { error: result.message || '更新用户信息失败' },
         { status: 400 }
       );
     }
 
-    // 重新获取用户信息
-    const userResult = await requestBackend<{
-      code: number;
-      data: any;
-    }>(API_ENDPOINTS.userInfo, { method: 'GET' }, request);
-
     return NextResponse.json({
       success: true,
-      user: {
-        id: userResult.data.id,
-        email: userResult.data.email,
-        name: userResult.data.name,
-        phone: userResult.data.phone,
-        role: userResult.data.role,
-        institution_id: userResult.data.institution_id,
-        avatar_url: userResult.data.avatar_url,
-        bio: userResult.data.bio,
-        address: userResult.data.address,
-      },
+      user: result.data,
     });
   } catch (error) {
-    console.error("Update user error:", error);
+    console.error("Update user proxy error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

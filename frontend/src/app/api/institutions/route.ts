@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_ENDPOINTS } from '@/lib/api-config';
 
-// 通用请求方法
+/**
+ * 通用后端请求方法
+ */
 async function requestBackend<T>(
   url: string,
   options: RequestInit = {},
@@ -34,7 +36,10 @@ async function requestBackend<T>(
   return response.json();
 }
 
-// GET /api/institutions - 获取机构列表
+/**
+ * GET /api/institutions - 获取机构列表
+ * 前端代理层，转发到后端用户服务
+ */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -46,16 +51,17 @@ export async function GET(request: NextRequest) {
     const params = new URLSearchParams();
     params.set('status', status);
     if (type) params.set('type', type);
-    params.set('page', String(page));
+    params.set('current', String(page));
     params.set('size', String(size));
 
     const result = await requestBackend<{
       code: number;
       message: string;
-      data: { list: any[]; total: number; page: number; size: number };
+      data: { records: any[]; total: number; current: number; size: number };
     }>(`${API_ENDPOINTS.institutions}?${params.toString()}`, { method: 'GET' }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success', data: {...} }
+    if (result.code !== 200) {
       return NextResponse.json(
         { success: false, error: result.message || '获取机构列表失败' },
         { status: 400 }
@@ -64,13 +70,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      institutions: result.data.list,
+      institutions: result.data.records,
       total: result.data.total,
-      page: result.data.page,
+      page: result.data.current,
       size: result.data.size,
     });
   } catch (error: any) {
-    console.error("Get institutions error:", error);
+    console.error("Get institutions proxy error:", error);
     return NextResponse.json(
       { success: false, error: error.message || "获取机构列表失败" },
       { status: 500 }
@@ -78,7 +84,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/institutions - 创建机构
+/**
+ * POST /api/institutions - 创建机构
+ * 前端代理层，转发到后端用户服务
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -108,18 +117,19 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         name,
         description,
-        contact_phone,
-        contact_email,
+        contactPhone: contact_phone,
+        contactEmail: contact_email,
         address,
         type: type || 'shelter',
         province,
         city,
         district,
-        license_url,
+        licenseUrl: license_url,
       }),
     }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success', data: 'institutionId' }
+    if (result.code !== 200) {
       return NextResponse.json(
         { success: false, error: result.message || '创建机构失败' },
         { status: 400 }
@@ -131,7 +141,7 @@ export async function POST(request: NextRequest) {
       institutionId: result.data,
     });
   } catch (error: any) {
-    console.error("Create institution error:", error);
+    console.error("Create institution proxy error:", error);
     return NextResponse.json(
       { success: false, error: error.message || "创建机构失败" },
       { status: 500 }

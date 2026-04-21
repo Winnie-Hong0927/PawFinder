@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_ENDPOINTS } from '@/lib/api-config';
 
-// 通用请求方法
+/**
+ * 通用后端请求方法
+ */
 async function requestBackend<T>(
   url: string,
   options: RequestInit = {},
@@ -34,7 +36,10 @@ async function requestBackend<T>(
   return response.json();
 }
 
-// GET /api/pets - 获取宠物列表
+/**
+ * GET /api/pets - 获取宠物列表
+ * 前端代理层，转发到后端宠物服务
+ */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -46,21 +51,24 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status") || "available";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "12");
+    const institutionId = searchParams.get("institutionId");
     
     if (species) params.set('species', species);
     if (size) params.set('size', size);
+    if (institutionId) params.set('institutionId', institutionId);
     params.set('status', status);
-    params.set('page', String(page));
+    params.set('current', String(page));
     params.set('size', String(limit));
 
     const backendUrl = `${API_ENDPOINTS.pets}?${params.toString()}`;
     const result = await requestBackend<{
       code: number;
       message: string;
-      data: { list: any[]; total: number; page: number; size: number };
+      data: { records: any[]; total: number; current: number; size: number; pages: number };
     }>(backendUrl, { method: 'GET' }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success', data: {...} }
+    if (result.code !== 200) {
       return NextResponse.json(
         { error: result.message || '获取宠物列表失败' },
         { status: 400 }
@@ -69,13 +77,14 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      pets: result.data.list,
+      pets: result.data.records,
       total: result.data.total,
-      page: result.data.page,
+      page: result.data.current,
       limit: result.data.size,
+      pages: result.data.pages,
     });
   } catch (error) {
-    console.error("Get pets error:", error);
+    console.error("Get pets proxy error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -83,7 +92,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/pets - 创建宠物
+/**
+ * POST /api/pets - 创建宠物
+ * 前端代理层，转发到后端宠物服务
+ */
 export async function POST(request: NextRequest) {
   try {
     const userId = request.headers.get("x-user-id");
@@ -96,18 +108,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const backendUrl = API_ENDPOINTS.pets;
     
     const result = await requestBackend<{
       code: number;
       message: string;
       data: string;
-    }>(backendUrl, {
+    }>(API_ENDPOINTS.pets, {
       method: 'POST',
       body: JSON.stringify(body),
     }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success', data: 'petId' }
+    if (result.code !== 200) {
       return NextResponse.json(
         { error: result.message || '创建宠物失败' },
         { status: 400 }
@@ -119,7 +131,7 @@ export async function POST(request: NextRequest) {
       petId: result.data,
     });
   } catch (error) {
-    console.error("Create pet error:", error);
+    console.error("Create pet proxy error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_ENDPOINTS } from '@/lib/api-config';
 
-// 通用请求方法
+/**
+ * 通用后端请求方法
+ */
 async function requestBackend<T>(
   url: string,
   options: RequestInit = {},
@@ -34,7 +36,10 @@ async function requestBackend<T>(
   return response.json();
 }
 
-// GET /api/pets/[id] - 获取宠物详情
+/**
+ * GET /api/pets/[id] - 获取宠物详情
+ * 前端代理层，转发到后端宠物服务
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -52,10 +57,11 @@ export async function GET(
       requestBackend<{
         code: number;
         data: number;
-      }>(API_ENDPOINTS.petApplicationCount(id), { method: 'GET' }, request),
+      }>(API_ENDPOINTS.petApplicationCount(id), { method: 'GET' }, request).catch(() => ({ code: 500, data: 0 })),
     ]);
 
-    if (petResult.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success', data: {...} }
+    if (petResult.code !== 200) {
       return NextResponse.json(
         { error: petResult.message || '获取宠物详情失败' },
         { status: 404 }
@@ -65,10 +71,10 @@ export async function GET(
     return NextResponse.json({
       success: true,
       pet: petResult.data,
-      application_count: countResult.code === 0 ? countResult.data : 0,
+      application_count: countResult.code === 200 ? countResult.data : 0,
     });
   } catch (error) {
-    console.error("Get pet error:", error);
+    console.error("Get pet proxy error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -76,7 +82,10 @@ export async function GET(
   }
 }
 
-// PUT /api/pets/[id] - 更新宠物
+/**
+ * PUT /api/pets/[id] - 更新宠物
+ * 前端代理层，转发到后端宠物服务
+ */
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -102,7 +111,8 @@ export async function PUT(
       body: JSON.stringify(body),
     }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success' }
+    if (result.code !== 200) {
       return NextResponse.json(
         { error: result.message || '更新宠物失败' },
         { status: 400 }
@@ -113,7 +123,7 @@ export async function PUT(
       success: true,
     });
   } catch (error) {
-    console.error("Update pet error:", error);
+    console.error("Update pet proxy error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -121,7 +131,10 @@ export async function PUT(
   }
 }
 
-// DELETE /api/pets/[id] - 删除宠物
+/**
+ * DELETE /api/pets/[id] - 删除宠物
+ * 前端代理层，转发到后端宠物服务
+ */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -145,7 +158,8 @@ export async function DELETE(
       method: 'DELETE',
     }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success' }
+    if (result.code !== 200) {
       return NextResponse.json(
         { error: result.message || '删除宠物失败' },
         { status: 400 }
@@ -156,7 +170,7 @@ export async function DELETE(
       success: true,
     });
   } catch (error) {
-    console.error("Delete pet error:", error);
+    console.error("Delete pet proxy error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -1,7 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { API_ENDPOINTS } from '@/lib/api-config';
 
-// 审核申请
+/**
+ * 通用后端请求方法
+ */
+async function requestBackend<T>(
+  url: string,
+  options: RequestInit = {},
+  request: NextRequest
+): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  // 传递用户认证信息
+  const userId = request.headers.get("x-user-id");
+  const userRole = request.headers.get("x-user-role");
+  if (userId) headers['X-User-Id'] = userId;
+  if (userRole) headers['X-User-Role'] = userRole;
+
+  // 如果前端有token，也传递
+  const cookieHeader = request.headers.get("cookie") || "";
+  if (cookieHeader.includes('token=')) {
+    const match = cookieHeader.match(/token=([^;]+)/);
+    if (match) {
+      headers['Authorization'] = `Bearer ${match[1]}`;
+    }
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  return response.json();
+}
+
+/**
+ * PUT /api/adoptions/[id] - 审核申请
+ * 前端代理层，转发到后端领养服务
+ */
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -17,101 +55,36 @@ export async function PUT(
       );
     }
 
-    // 检查是否为管理员
-    const client = getSupabaseClient();
-    const { data: admin } = await client
-      .from("users")
-      .select("role")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (!admin || admin.role !== "admin") {
-      return NextResponse.json(
-        { error: "Only admins can review applications" },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { status, admin_notes } = body;
 
-    if (!["approved", "rejected"].includes(status)) {
+    // 调用后端审核API
+    const result = await requestBackend<{
+      code: number;
+      message: string;
+      data: any;
+    }>(API_ENDPOINTS.applicationReview(id), {
+      method: 'PUT',
+      body: JSON.stringify({ 
+        status, 
+        adminNotes: admin_notes 
+      }),
+    }, request);
+
+    // 后端返回格式: { code: 200, message: 'success', data: {...} }
+    if (result.code !== 200) {
       return NextResponse.json(
-        { error: "Invalid status" },
+        { error: result.message || '审核失败' },
         { status: 400 }
       );
     }
 
-    // 获取申请信息
-    const { data: application } = await client
-      .from("adoption_applications")
-      .select("pet_id, user_id")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (!application) {
-      return NextResponse.json(
-        { error: "Application not found" },
-        { status: 404 }
-      );
-    }
-
-    // 更新申请状态
-    const { data: updatedApp, error } = await client
-      .from("adoption_applications")
-      .update({
-        status,
-        admin_notes,
-        reviewed_by: userId,
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to update application: ${error.message}`);
-    }
-
-    if (status === "approved") {
-      // 创建领养记录
-      await client
-        .from("adoptions")
-        .insert({
-          pet_id: application.pet_id,
-          user_id: application.user_id,
-          application_id: id,
-          status: "active",
-        });
-
-      // 更新宠物状态为 adopted
-      await client
-        .from("pets")
-        .update({ status: "adopted" })
-        .eq("id", application.pet_id);
-
-      // 将用户角色更新为 adopter
-      await client
-        .from("users")
-        .update({ 
-          role: "adopter",
-          adopter_status: "approved" 
-        })
-        .eq("id", application.user_id);
-    } else {
-      // 拒绝申请，恢复宠物状态
-      await client
-        .from("pets")
-        .update({ status: "available" })
-        .eq("id", application.pet_id);
-    }
-
     return NextResponse.json({
       success: true,
-      application: updatedApp,
+      application: result.data,
     });
   } catch (error) {
-    console.error("Review application error:", error);
+    console.error("Review application proxy error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

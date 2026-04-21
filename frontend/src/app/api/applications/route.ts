@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_ENDPOINTS } from '@/lib/api-config';
 
-// 通用请求方法
+/**
+ * 通用后端请求方法
+ */
 async function requestBackend<T>(
   url: string,
   options: RequestInit = {},
@@ -34,7 +36,10 @@ async function requestBackend<T>(
   return response.json();
 }
 
-// GET /api/applications - 获取申请列表
+/**
+ * GET /api/applications - 获取申请列表
+ * 前端代理层，转发到后端领养服务
+ */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -56,7 +61,7 @@ export async function GET(request: NextRequest) {
       if (status) params.set('status', status);
       const page = searchParams.get("page") || "1";
       const size = searchParams.get("size") || "20";
-      params.set('page', page);
+      params.set('current', page);
       params.set('size', size);
       backendUrl = `${API_ENDPOINTS.pendingApplications}?${params.toString()}`;
     }
@@ -72,10 +77,11 @@ export async function GET(request: NextRequest) {
     const result = await requestBackend<{
       code: number;
       message: string;
-      data: any[] | { list: any[]; total: number; page: number; size: number };
+      data: any[] | { records: any[]; total: number; current: number; size: number };
     }>(backendUrl, { method: 'GET' }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success', data: {...} }
+    if (result.code !== 200) {
       return NextResponse.json(
         { success: false, error: result.message || '获取申请列表失败' },
         { status: 400 }
@@ -83,22 +89,22 @@ export async function GET(request: NextRequest) {
     }
 
     // 处理分页响应
-    if (pending === 'true' && result.data && typeof result.data === 'object' && 'list' in result.data) {
+    if (pending === 'true' && result.data && typeof result.data === 'object' && 'records' in result.data) {
       return NextResponse.json({
         success: true,
-        applications: result.data.list,
+        applications: result.data.records,
         total: result.data.total,
-        page: result.data.page,
+        page: result.data.current,
         size: result.data.size,
       });
     }
 
     return NextResponse.json({
       success: true,
-      applications: result.data,
+      applications: Array.isArray(result.data) ? result.data : [],
     });
   } catch (error: any) {
-    console.error("Get applications error:", error);
+    console.error("Get applications proxy error:", error);
     return NextResponse.json(
       { success: false, error: error.message || "获取申请列表失败" },
       { status: 500 }
@@ -106,7 +112,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/applications - 创建申请
+/**
+ * POST /api/applications - 创建申请
+ * 前端代理层，转发到后端领养服务
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -128,18 +137,19 @@ export async function POST(request: NextRequest) {
     }>(API_ENDPOINTS.applications, {
       method: 'POST',
       body: JSON.stringify({
-        pet_id,
+        petId: pet_id,
         reason,
-        living_condition,
-        living_condition_images,
+        livingCondition: living_condition,
+        livingConditionImages: living_condition_images,
         experience,
-        has_other_pets,
-        other_pets_detail,
+        hasOtherPets: has_other_pets,
+        otherPetsDetail: other_pets_detail,
         documents: documents || [],
       }),
     }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success', data: 'applicationId' }
+    if (result.code !== 200) {
       return NextResponse.json(
         { success: false, error: result.message || '创建申请失败' },
         { status: 400 }
@@ -151,7 +161,7 @@ export async function POST(request: NextRequest) {
       applicationId: result.data,
     });
   } catch (error: any) {
-    console.error("Create application error:", error);
+    console.error("Create application proxy error:", error);
     return NextResponse.json(
       { success: false, error: error.message || "创建申请失败" },
       { status: 500 }

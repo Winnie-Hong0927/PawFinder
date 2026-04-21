@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_ENDPOINTS } from '@/lib/api-config';
 
-// 通用请求方法
+/**
+ * 通用后端请求方法
+ */
 async function requestBackend<T>(
   url: string,
   options: RequestInit = {},
@@ -34,7 +36,10 @@ async function requestBackend<T>(
   return response.json();
 }
 
-// GET /api/applications/[id] - 获取申请详情
+/**
+ * GET /api/applications/[id] - 获取申请详情
+ * 前端代理层，转发到后端领养服务
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -48,7 +53,8 @@ export async function GET(
       data: any;
     }>(API_ENDPOINTS.applicationById(id), { method: 'GET' }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success', data: {...} }
+    if (result.code !== 200) {
       return NextResponse.json(
         { success: false, error: result.message || '获取申请详情失败' },
         { status: 404 }
@@ -60,7 +66,7 @@ export async function GET(
       application: result.data,
     });
   } catch (error: any) {
-    console.error("Get application error:", error);
+    console.error("Get application proxy error:", error);
     return NextResponse.json(
       { success: false, error: error.message || "获取申请详情失败" },
       { status: 500 }
@@ -68,7 +74,10 @@ export async function GET(
   }
 }
 
-// PATCH /api/applications/[id] - 更新申请状态（审核）
+/**
+ * PATCH /api/applications/[id] - 更新申请状态（审核）
+ * 前端代理层，转发到后端领养服务
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -93,10 +102,11 @@ export async function PATCH(
       data: any;
     }>(API_ENDPOINTS.applicationReview(id), {
       method: 'PUT',
-      body: JSON.stringify({ status, admin_notes }),
+      body: JSON.stringify({ status, adminNotes: admin_notes }),
     }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success', data: {...} }
+    if (result.code !== 200) {
       return NextResponse.json(
         { success: false, error: result.message || '更新申请失败' },
         { status: 400 }
@@ -108,7 +118,7 @@ export async function PATCH(
       application: result.data,
     });
   } catch (error: any) {
-    console.error("Update application error:", error);
+    console.error("Update application proxy error:", error);
     return NextResponse.json(
       { success: false, error: error.message || "更新申请失败" },
       { status: 500 }

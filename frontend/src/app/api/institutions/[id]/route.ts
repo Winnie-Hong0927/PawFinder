@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_ENDPOINTS } from '@/lib/api-config';
 
-// 通用请求方法
+/**
+ * 通用后端请求方法
+ */
 async function requestBackend<T>(
   url: string,
   options: RequestInit = {},
@@ -34,7 +36,10 @@ async function requestBackend<T>(
   return response.json();
 }
 
-// GET /api/institutions/[id] - 获取机构详情
+/**
+ * GET /api/institutions/[id] - 获取机构详情
+ * 前端代理层，转发到后端用户服务
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -48,7 +53,8 @@ export async function GET(
       data: any;
     }>(API_ENDPOINTS.institutionById(id), { method: 'GET' }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success', data: {...} }
+    if (result.code !== 200) {
       return NextResponse.json(
         { success: false, error: result.message || '获取机构详情失败' },
         { status: 404 }
@@ -60,7 +66,7 @@ export async function GET(
       institution: result.data,
     });
   } catch (error: any) {
-    console.error("Get institution error:", error);
+    console.error("Get institution proxy error:", error);
     return NextResponse.json(
       { success: false, error: error.message || "获取机构详情失败" },
       { status: 500 }
@@ -68,7 +74,10 @@ export async function GET(
   }
 }
 
-// PATCH /api/institutions/[id] - 更新机构
+/**
+ * PATCH /api/institutions/[id] - 更新机构
+ * 前端代理层，转发到后端用户服务
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -76,7 +85,6 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status } = body;
 
     const userId = request.headers.get("x-user-id");
     if (!userId) {
@@ -92,10 +100,11 @@ export async function PATCH(
       data: any;
     }>(API_ENDPOINTS.institutionById(id), {
       method: 'PUT',
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(body),
     }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success', data: {...} }
+    if (result.code !== 200) {
       return NextResponse.json(
         { success: false, error: result.message || '更新机构失败' },
         { status: 400 }
@@ -107,7 +116,7 @@ export async function PATCH(
       institution: result.data,
     });
   } catch (error: any) {
-    console.error("Update institution error:", error);
+    console.error("Update institution proxy error:", error);
     return NextResponse.json(
       { success: false, error: error.message || "更新机构失败" },
       { status: 500 }
@@ -115,7 +124,10 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/institutions/[id] - 删除机构
+/**
+ * DELETE /api/institutions/[id] - 删除机构
+ * 前端代理层，转发到后端用户服务
+ */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -138,7 +150,8 @@ export async function DELETE(
       method: 'DELETE',
     }, request);
 
-    if (result.code !== 0) {
+    // 后端返回格式: { code: 200, message: 'success' }
+    if (result.code !== 200) {
       return NextResponse.json(
         { success: false, error: result.message || '删除机构失败' },
         { status: 400 }
@@ -149,7 +162,7 @@ export async function DELETE(
       success: true,
     });
   } catch (error: any) {
-    console.error("Delete institution error:", error);
+    console.error("Delete institution proxy error:", error);
     return NextResponse.json(
       { success: false, error: error.message || "删除机构失败" },
       { status: 500 }

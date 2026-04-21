@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_ENDPOINTS } from '@/lib/api-config';
 
+/**
+ * 发送验证码 - 前端代理层
+ * 仅将请求转发到后端用户服务
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { phone, type } = body;
 
+    // 参数校验
     if (!phone || phone.length !== 11) {
       return NextResponse.json({
         success: false,
@@ -13,10 +18,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 调用后端发送验证码API
-    const backendUrl = API_ENDPOINTS.sendCode;
-    
-    const response = await fetch(backendUrl, {
+    // 调用后端用户服务
+    const response = await fetch(API_ENDPOINTS.sendCode, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -26,34 +29,25 @@ export async function POST(request: NextRequest) {
     
     const result = await response.json();
     
-    if (!response.ok) {
+    // 后端返回格式: { code: 200, message: 'success', data: '验证码' }
+    if (result.code !== 200) {
       return NextResponse.json({
         success: false,
         error: result.message || '发送失败',
       }, { status: response.status });
     }
     
-    // 后端返回: { code: 0, message: 'success', data: { code } }
-    if (result.code !== 0) {
-      return NextResponse.json({
-        success: false,
-        error: result.message || '发送失败',
-      });
-    }
-    
-    // 开发环境下返回验证码方便测试
-    const debugCode = process.env.NODE_ENV === 'development' ? result.data?.code : undefined;
-    
     return NextResponse.json({
       success: true,
-      message: "验证码已发送",
-      debug_code: debugCode,
+      message: result.message || "验证码已发送",
+      // 开发环境返回验证码方便测试
+      debug_code: process.env.NODE_ENV === 'development' ? result.data : undefined,
     });
   } catch (error) {
-    console.error("Send code error:", error);
+    console.error("Send code proxy error:", error);
     return NextResponse.json({
       success: false,
       error: "发送失败，请稍后重试",
-    });
+    }, { status: 500 });
   }
 }
