@@ -1,24 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
+import { GATEWAY_BASE_URL } from "@/lib/api-config";
 
-// In-memory store for demo
-const applications: Record<string, any>[] = [];
-
+// 提交领养申请
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { petId, reason, idCard, livingCondition, experience } = body;
 
-    // Get user from header (simplified auth)
+    // 从 header 获取用户 ID
     const authHeader = request.headers.get("Authorization");
-    let userId = "demo-user";
+    let userId = request.headers.get("x-user-id");
     
-    if (authHeader) {
+    if (!userId && authHeader) {
       try {
         const token = Buffer.from(authHeader.replace("Bearer ", ""), "base64").toString();
-        userId = token.split(":")[0] || "demo-user";
+        userId = token.split(":")[0];
       } catch {
-        // Use default
+        // ignore
       }
+    }
+
+    if (!userId) {
+      return NextResponse.json({
+        success: false,
+        error: "请先登录"
+      }, { status: 401 });
     }
 
     if (!petId) {
@@ -35,72 +41,75 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (!idCard || idCard.length !== 18) {
+    // 调用后端领养申请接口
+    const response = await fetch(`${GATEWAY_BASE_URL}/api/adoption/v1/applications`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        pet_id: petId,
+        reason,
+        id_card_number: idCard,
+        living_condition: livingCondition,
+        experience
+      })
+    });
+
+    const result = await response.json();
+
+    if (result.code !== 200) {
       return NextResponse.json({
         success: false,
-        error: "请输入正确的18位身份证号",
-      });
+        error: result.message || "提交失败"
+      }, { status: 400 });
     }
-
-    // Create application
-    const application = {
-      id: Date.now().toString(),
-      userId,
-      petId,
-      reason,
-      idCard,
-      livingCondition: livingCondition || "",
-      experience: experience || "",
-      status: "pending",
-      created_at: new Date().toISOString(),
-    };
-
-    applications.push(application);
-
-    console.log(`[Adoption] New application for pet ${petId} by user ${userId}`);
 
     return NextResponse.json({
       success: true,
       message: "申请已提交",
-      applicationId: application.id,
+      applicationId: result.data?.id
     });
   } catch (error) {
     console.error("Submit adoption error:", error);
     return NextResponse.json({
       success: false,
-      error: "提交失败，请稍后重试",
-    });
+      error: "提交失败，请稍后重试"
+    }, { status: 500 });
   }
 }
 
+// 获取领养申请列表
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
     const petId = searchParams.get("petId");
-    const status = searchParams.get("status");
 
-    let result = [...applications];
+    const params = new URLSearchParams();
+    if (userId) params.append("user_id", userId);
+    if (petId) params.append("pet_id", petId);
 
-    if (userId) {
-      result = result.filter((app) => app.userId === userId);
-    }
-    if (petId) {
-      result = result.filter((app) => app.petId === petId);
-    }
-    if (status) {
-      result = result.filter((app) => app.status === status);
+    const response = await fetch(`${GATEWAY_BASE_URL}/api/adoption/v1/applications?${params.toString()}`);
+    const result = await response.json();
+
+    if (result.code !== 200) {
+      return NextResponse.json({
+        success: false,
+        error: result.message || "获取失败"
+      }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      applications: result,
+      applications: result.data?.records || []
     });
   } catch (error) {
     console.error("Get applications error:", error);
     return NextResponse.json({
       success: false,
-      error: "获取申请列表失败",
-    });
+      error: "获取失败"
+    }, { status: 500 });
   }
 }

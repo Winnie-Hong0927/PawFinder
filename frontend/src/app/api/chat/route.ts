@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
 import { LLMClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
+import { GATEWAY_BASE_URL } from "@/lib/api-config";
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
     if (!message) {
       return NextResponse.json(
-        { error: "Message is required" },
+        { success: false, error: "Message is required" },
         { status: 400 }
       );
     }
@@ -52,26 +52,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 保存聊天记录
+    // 保存聊天记录到后端
     if (userId && session_id) {
-      const dbClient = getSupabaseClient();
-      await dbClient
-        .from("chat_messages")
-        .insert({
-          session_id,
-          user_id: userId,
-          role: "user",
-          content: message,
+      try {
+        await fetch(`${GATEWAY_BASE_URL}/api/user/v1/chat/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            session_id,
+            user_id: userId,
+            user_message: message,
+            assistant_message: responseContent
+          })
         });
-      
-      await dbClient
-        .from("chat_messages")
-        .insert({
-          session_id,
-          user_id: userId,
-          role: "assistant",
-          content: responseContent,
-        });
+      } catch (saveError) {
+        console.error("Failed to save chat messages:", saveError);
+        // 不影响主流程，继续返回响应
+      }
     }
 
     return NextResponse.json({
@@ -81,7 +80,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Chat error:", error);
     return NextResponse.json(
-      { error: "Failed to generate response" },
+      { success: false, error: "Failed to generate response" },
       { status: 500 }
     );
   }

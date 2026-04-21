@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { GATEWAY_BASE_URL } from "@/lib/api-config";
 
 // 获取我的视频列表
 export async function GET(request: NextRequest) {
@@ -8,41 +8,29 @@ export async function GET(request: NextRequest) {
     
     if (!userId) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { success: false, error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    const client = getSupabaseClient();
-    
-    const { data: videos, error } = await client
-      .from("pet_videos")
-      .select(`
-        *,
-        adoptions (
-          id,
-          pets (
-            id,
-            name,
-            species
-          )
-        )
-      `)
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+    const response = await fetch(`${GATEWAY_BASE_URL}/api/adoption/v1/videos?user_id=${userId}`);
+    const result = await response.json();
 
-    if (error) {
-      throw new Error(`Failed to fetch videos: ${error.message}`);
+    if (result.code !== 200) {
+      return NextResponse.json({
+        success: false,
+        error: result.message || "获取视频列表失败"
+      }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      videos: videos || [],
+      videos: result.data || [],
     });
   } catch (error) {
     console.error("Get videos error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { success: false, error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -55,7 +43,7 @@ export async function POST(request: NextRequest) {
     
     if (!userId) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { success: false, error: "Unauthorized" },
         { status: 401 }
       );
     }
@@ -65,65 +53,42 @@ export async function POST(request: NextRequest) {
 
     if (!adoption_id || !video_url) {
       return NextResponse.json(
-        { error: "Adoption ID and video URL are required" },
+        { success: false, error: "Adoption ID and video URL are required" },
         { status: 400 }
       );
     }
 
-    const client = getSupabaseClient();
-
-    // 验证领养记录
-    const { data: adoption, error: adoptionError } = await client
-      .from("adoptions")
-      .select("id, status")
-      .eq("id", adoption_id)
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (adoptionError) {
-      throw new Error(`Failed to verify adoption: ${adoptionError.message}`);
-    }
-
-    if (!adoption) {
-      return NextResponse.json(
-        { error: "Adoption record not found" },
-        { status: 404 }
-      );
-    }
-
-    if (adoption.status !== "active") {
-      return NextResponse.json(
-        { error: "Adoption is not active" },
-        { status: 400 }
-      );
-    }
-
-    // 创建视频记录
-    const { data: video, error } = await client
-      .from("pet_videos")
-      .insert({
-        adoption_id,
+    const response = await fetch(`${GATEWAY_BASE_URL}/api/adoption/v1/videos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
         user_id: userId,
+        adoption_id,
         video_url,
         thumbnail_url,
-        description,
-        status: "pending",
+        description
       })
-      .select()
-      .single();
+    });
 
-    if (error) {
-      throw new Error(`Failed to create video record: ${error.message}`);
+    const result = await response.json();
+
+    if (result.code !== 200) {
+      return NextResponse.json({
+        success: false,
+        error: result.message || "上传视频失败"
+      }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      video,
+      video: result.data
     });
   } catch (error) {
     console.error("Upload video error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { success: false, error: "Internal server error" },
       { status: 500 }
     );
   }

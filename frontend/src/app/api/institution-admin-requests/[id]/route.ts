@@ -1,28 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { GATEWAY_BASE_URL } from "@/lib/api-config";
 
+// 获取机构管理员申请详情
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const supabase = getSupabaseClient();
 
-    const { data, error } = await supabase
-      .from("institution_admin_requests")
-      .select(`
-        *,
-        institution:institutions(id, name)
-      `)
-      .eq("id", id)
-      .single();
+    const response = await fetch(`${GATEWAY_BASE_URL}/api/user/v1/institution-admin-requests/${id}`);
+    const result = await response.json();
 
-    if (error) throw error;
+    if (result.code !== 200) {
+      return NextResponse.json({
+        success: false,
+        error: result.message || "获取申请详情失败"
+      }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
-      request: data,
+      request: result.data,
     });
   } catch (error: any) {
     console.error("Get admin request error:", error);
@@ -33,6 +32,7 @@ export async function GET(
   }
 }
 
+// 审核机构管理员申请
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -41,7 +41,6 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     const { status, reviewed_by, rejection_reason } = body;
-    const supabase = getSupabaseClient();
 
     if (!status || !["approved", "rejected"].includes(status)) {
       return NextResponse.json(
@@ -50,79 +49,35 @@ export async function PATCH(
       );
     }
 
-    // Get the request first
-    const { data: existingRequest, error: getError } = await supabase
-      .from("institution_admin_requests")
-      .select("*")
-      .eq("id", id)
-      .single();
+    const response = await fetch(`${GATEWAY_BASE_URL}/api/user/v1/institution-admin-requests/${id}/review`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        status,
+        reviewed_by,
+        rejection_reason
+      })
+    });
 
-    if (getError || !existingRequest) {
-      return NextResponse.json(
-        { success: false, error: "申请不存在" },
-        { status: 404 }
-      );
-    }
+    const result = await response.json();
 
-    const updateData: any = {
-      status,
-      reviewed_by,
-      reviewed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    if (status === "rejected") {
-      updateData.rejection_reason = rejection_reason || "不符合条件";
-    }
-
-    // Update request
-    const { data: requestData, error } = await supabase
-      .from("institution_admin_requests")
-      .update(updateData)
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // If approved, create the user account
-    if (status === "approved") {
-      const { error: userError } = await supabase
-        .from("users")
-        .insert({
-          email: existingRequest.email,
-          phone: existingRequest.phone,
-          name: existingRequest.name,
-          role: "institution_admin",
-          institution_id: existingRequest.institution_id,
-          id_card_number: existingRequest.id_card_number,
-          id_card_front_url: existingRequest.id_card_front_url,
-          id_card_back_url: existingRequest.id_card_back_url,
-        });
-
-      if (userError) {
-        console.error("Failed to create user:", userError);
-        // Rollback the request status
-        await supabase
-          .from("institution_admin_requests")
-          .update({ status: "pending" })
-          .eq("id", id);
-
-        return NextResponse.json(
-          { success: false, error: "创建用户账号失败" },
-          { status: 500 }
-        );
-      }
+    if (result.code !== 200) {
+      return NextResponse.json({
+        success: false,
+        error: result.message || "审核失败"
+      }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      request: requestData,
+      request: result.data
     });
   } catch (error: any) {
     console.error("Review admin request error:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "审核申请失败" },
+      { success: false, error: error.message || "审核失败" },
       { status: 500 }
     );
   }

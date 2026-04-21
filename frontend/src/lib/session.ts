@@ -1,101 +1,56 @@
 import { cookies } from 'next/headers';
-import { createClient } from '@supabase/supabase-js';
+import { GATEWAY_BASE_URL } from './api-config';
 
 // 会话有效期：24小时
 const SESSION_TTL = 24 * 60 * 60 * 1000;
 
-// 获取 Supabase 客户端（使用服务角色密钥）
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.COZE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.COZE_SUPABASE_SERVICE_ROLE_KEY || process.env.COZE_SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_KEY;
+// 从后端获取当前用户信息
+export async function getCurrentUser(): Promise<{ userId: string; user: Record<string, unknown> } | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('auth_token')?.value;
   
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase configuration missing');
-  }
+  if (!token) return null;
   
-  return createClient(supabaseUrl, supabaseKey);
-}
-
-// 生成随机会话ID
-function generateSessionId(): string {
-  return `sess_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-}
-
-// 创建会话
-export async function createSession(userId: string, user: Record<string, unknown>): Promise<string> {
-  const supabase = getSupabaseAdmin();
-  const sessionId = generateSessionId();
-  const expiresAt = new Date(Date.now() + SESSION_TTL);
-
-  const { error } = await supabase
-    .from('sessions')
-    .insert({
-      id: sessionId,
-      user_id: userId,
-      user_data: user,
-      expires_at: expiresAt.toISOString()
+  try {
+    const response = await fetch(`${GATEWAY_BASE_URL}/api/user/v1/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
-
-  if (error) {
-    console.error('Failed to create session:', error);
-    throw new Error('Failed to create session');
-  }
-
-  return sessionId;
-}
-
-// 获取会话
-export async function getSession(sessionId: string): Promise<{ userId: string; user: Record<string, unknown> } | null> {
-  if (!sessionId) return null;
-  
-  const supabase = getSupabaseAdmin();
-
-  const { data, error } = await supabase
-    .from('sessions')
-    .select('user_id, user_data')
-    .eq('id', sessionId)
-    .single();
-
-  if (error || !data) return null;
-  
-  // 检查是否过期
-  const expiresAt = new Date(data.expires_at);
-  if (Date.now() > expiresAt.getTime()) {
-    // 删除过期会话
-    await supabase.from('sessions').delete().eq('id', sessionId);
+    
+    if (!response.ok) return null;
+    
+    const result = await response.json();
+    if (result.code !== 200 || !result.data) return null;
+    
+    return {
+      userId: result.data.id,
+      user: result.data
+    };
+  } catch (error) {
+    console.error('Failed to get current user:', error);
     return null;
   }
-  
-  // 确保 user_data 是纯 JSON 对象
-  const userData = JSON.parse(JSON.stringify(data.user_data));
-  
-  return { userId: data.user_id, user: userData };
 }
 
-// 删除会话
-export async function deleteSession(sessionId: string): Promise<void> {
-  const supabase = getSupabaseAdmin();
-  await supabase.from('sessions').delete().eq('id', sessionId);
-}
-
-// 获取当前会话（从 cookie）
-export async function getCurrentSession(): Promise<{ userId: string; user: Record<string, unknown> } | null> {
+// 获取认证 token
+export async function getAuthToken(): Promise<string | null> {
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get('session_id')?.value;
-  if (!sessionId) return null;
-  return getSession(sessionId);
+  return cookieStore.get('auth_token')?.value || null;
 }
 
-// 设置会话 cookie
-export function getSessionCookie(sessionId: string): string {
-  return `session_id=${sessionId}; Path=/; HttpOnly; Max-Age=${SESSION_TTL / 1000}; SameSite=Lax`;
+// 设置认证 cookie
+export function getAuthCookie(token: string, maxAge: number = SESSION_TTL / 1000): string {
+  return `auth_token=${token}; Path=/; HttpOnly; Max-Age=${maxAge}; SameSite=Lax`;
 }
 
-// 清理过期会话（可定时调用）
-export async function cleanupExpiredSessions(): Promise<void> {
-  const supabase = getSupabaseAdmin();
-  await supabase
-    .from('sessions')
-    .delete()
-    .lt('expires_at', new Date().toISOString());
+// 清除认证 cookie
+export function getClearAuthCookie(): string {
+  return 'auth_token=; Path=/; HttpOnly; Max-Age=0; SameSite=Lax';
+}
+
+// 检查是否已登录
+export async function isAuthenticated(): Promise<boolean> {
+  const user = await getCurrentUser();
+  return user !== null;
 }

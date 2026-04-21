@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
 import { LLMClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
+import { GATEWAY_BASE_URL } from "@/lib/api-config";
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
     if (!preferences) {
       return NextResponse.json(
-        { error: "Preferences are required" },
+        { success: false, error: "Preferences are required" },
         { status: 400 }
       );
     }
@@ -18,18 +18,15 @@ export async function POST(request: NextRequest) {
     const config = new Config();
     const client = new LLMClient(config, customHeaders);
 
-    // 获取所有可用宠物
-    const dbClient = getSupabaseClient();
-    const { data: pets, error } = await dbClient
-      .from("pets")
-      .select("*")
-      .eq("status", "available")
-      .order("created_at", { ascending: false })
-      .limit(50);
+    // 从后端获取所有可用宠物
+    const petsResponse = await fetch(`${GATEWAY_BASE_URL}/api/pet/v1/pets?status=available&limit=50`);
+    const petsResult = await petsResponse.json();
 
-    if (error) {
-      throw new Error(`Failed to fetch pets: ${error.message}`);
+    if (petsResult.code !== 200) {
+      throw new Error(petsResult.message || "Failed to fetch pets");
     }
+
+    const pets = petsResult.data?.records || [];
 
     if (!pets || pets.length === 0) {
       return NextResponse.json({
@@ -40,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 构建宠物列表
-    const petList = pets.map(p => 
+    const petList = pets.map((p: any) => 
       `ID: ${p.id}, 名字: ${p.name}, 种类: ${p.species}, 品种: ${p.breed || '未知'}, 年龄: ${p.age || '未知'}, 性别: ${p.gender || '未知'}, 体型: ${p.size || '未知'}, 特征: ${(p.traits || []).join(', ')}, 描述: ${p.description || '暂无'}`
     ).join("\n");
 
@@ -102,21 +99,11 @@ ${petList}
       console.error("Failed to parse recommendations:", parseError);
     }
 
-    // 获取完整的宠物信息
-    const recommendedPets = recommendations
-      .filter((r) => r.pet_id)
-      .map((r) => {
-        const pet = pets.find(p => p.id === r.pet_id);
-        if (pet) {
-          return {
-            ...pet,
-            match_reason: r.match_reason,
-            match_level: r.match_level,
-          };
-        }
-        return null;
-      })
-      .filter(Boolean);
+    // 获取推荐的宠物详情
+    const recommendedPets = recommendations.map(rec => {
+      const pet = pets.find((p: any) => p.id === rec.pet_id);
+      return pet ? { ...pet, match_reason: rec.match_reason, match_level: rec.match_level } : null;
+    }).filter(Boolean);
 
     return NextResponse.json({
       success: true,
@@ -126,7 +113,7 @@ ${petList}
   } catch (error) {
     console.error("Recommend error:", error);
     return NextResponse.json(
-      { error: "Failed to generate recommendations" },
+      { success: false, error: "Failed to generate recommendations" },
       { status: 500 }
     );
   }

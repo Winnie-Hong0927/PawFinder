@@ -1,37 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { GATEWAY_BASE_URL } from "@/lib/api-config";
 
+// 获取机构管理员申请列表
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const institution_id = searchParams.get("institution_id");
 
-    const supabase = getSupabaseClient();
+    const params = new URLSearchParams();
+    if (status) params.append("status", status);
+    if (institution_id) params.append("institution_id", institution_id);
 
-    let query = supabase
-      .from("institution_admin_requests")
-      .select(`
-        *,
-        institution:institutions(id, name)
-      `)
-      .order("created_at", { ascending: false });
+    const response = await fetch(`${GATEWAY_BASE_URL}/api/user/v1/institution-admin-requests?${params.toString()}`);
+    const result = await response.json();
 
-    if (status) {
-      query = query.eq("status", status);
+    if (result.code !== 200) {
+      return NextResponse.json({
+        success: false,
+        error: result.message || "获取申请列表失败"
+      }, { status: 500 });
     }
-
-    if (institution_id) {
-      query = query.eq("institution_id", institution_id);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
 
     return NextResponse.json({
       success: true,
-      requests: data || [],
+      requests: result.data || [],
     });
   } catch (error: any) {
     console.error("Get admin requests error:", error);
@@ -42,6 +35,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// 创建机构管理员申请
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -54,63 +48,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = getSupabaseClient();
-
-    // Check if institution exists and is approved
-    const { data: institution, error: instError } = await supabase
-      .from("institutions")
-      .select("id, status")
-      .eq("id", institution_id)
-      .single();
-
-    if (instError || !institution) {
-      return NextResponse.json(
-        { success: false, error: "机构不存在" },
-        { status: 404 }
-      );
-    }
-
-    if (institution.status !== "verified") {
-      return NextResponse.json(
-        { success: false, error: "机构尚未通过审核，请等待系统管理员审核通过后再申请" },
-        { status: 400 }
-      );
-    }
-
-    // Check if email already registered
-    const { data: existingUser } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", email)
-      .single();
-
-    if (existingUser) {
-      return NextResponse.json(
-        { success: false, error: "该邮箱已被注册" },
-        { status: 400 }
-      );
-    }
-
-    const { data, error } = await supabase
-      .from("institution_admin_requests")
-      .insert({
+    const response = await fetch(`${GATEWAY_BASE_URL}/api/user/v1/institution-admin-requests`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
         institution_id,
         email,
         phone,
         name,
         id_card_number,
         id_card_front_url,
-        id_card_back_url,
-        status: "pending",
+        id_card_back_url
       })
-      .select()
-      .single();
+    });
 
-    if (error) throw error;
+    const result = await response.json();
+
+    if (result.code !== 200) {
+      return NextResponse.json({
+        success: false,
+        error: result.message || "创建申请失败"
+      }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
-      request: data,
+      request: result.data
     });
   } catch (error: any) {
     console.error("Create admin request error:", error);
