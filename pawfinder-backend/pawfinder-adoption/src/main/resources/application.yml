@@ -4,42 +4,125 @@ server:
 spring:
   application:
     name: adoption-service
-
+  profiles:
+    active: dev
+  
+  # 数据源配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/pawfinder_adoption?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://localhost:3306/pawfinder_adoption?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: pawfinder
     password: pawfinder123
-
+  
+  # Redis 配置
   data:
     redis:
       host: localhost
       port: 6379
       database: 0
+      timeout: 10000ms
+  
+  # Nacos 配置中心
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: pawfinder
+        group: DEFAULT_GROUP
+      config:
+        server-addr: localhost:8848
+        namespace: pawfinder
+        group: DEFAULT_GROUP
+        file-extension: yaml
+    
+    # Sentinel 配置
+    sentinel:
+      transport:
+        dashboard: localhost:8080
+        port: 8721
+      eager: true
+    
+    # OpenFeign 配置
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 5000
+            readTimeout: 5000
+            loggerLevel: FULL
+      circuitbreaker:
+        enabled: true
+    
+    # Seata 配置
+    seata:
+      enabled: true
+      application-id: adoption-service
+      tx-service-group: pawfinder-tx-group
+      service:
+        vgroup-mapping:
+          pawfinder-tx-group: default
+      registry:
+        type: nacos
+        nacos:
+          server-addr: localhost:8848
+          namespace: pawfinder
+          group: SEATA_GROUP
+      # Saga 配置
+      saga:
+        enabled: true
+        state-machine:
+          json-path: classpath*:saga/*.json
 
+# MyBatis-Plus 配置
 mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.pawfinder.adoption.entity
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
-      id-type: ASSIGN_UUID
+      id-type: assign_uuid
       logic-delete-field: deletedAt
-      logic-delete-value: "NOW()"
-      logic-not-delete-value: "NULL"
-  mapper-locations: classpath*:/mapper/**/*.xml
+      logic-delete-value: 'NOW()'
+      logic-not-delete-value: 'NULL'
 
-# Pet Service (for OpenFeign in production)
-pet-service:
-  url: http://localhost:8082
+# Actuator 配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
 
-# User Service (for OpenFeign in production)
-user-service:
-  url: http://localhost:8081
+# Knife4j 配置
+knife4j:
+  enable: true
+  openapi:
+    title: PawFinder 领养服务 API
+    description: 领养申请管理、审核、领养记录接口
+    version: 1.0.0
+    base-url: http://localhost:8083
+    group:
+      default:
+        group-name: default
+        api-rule: package
+        api-rule-resources:
+          - com.pawfinder.adoption.controller
 
-# Swagger
-springdoc:
-  api-docs:
-    path: /api-docs
-  swagger-ui:
-    path: /swagger-ui.html
+logging:
+  level:
+    com.pawfinder: DEBUG
+    com.alibaba.nacos: WARN
+    io.seata: DEBUG
+
+# Feign 日志
+feign:
+  client:
+    config:
+      user-service:
+        loggerLevel: FULL
+      pet-service:
+        loggerLevel: FULL

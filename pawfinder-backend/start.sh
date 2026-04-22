@@ -11,10 +11,13 @@ NC='\033[0m' # No Color
 PROJECT_DIR="/workspace/projects/pawfinder-backend"
 
 # 服务端口
+GATEWAY_PORT=8080
 USER_PORT=8081
 PET_PORT=8082
 ADOPTION_PORT=8083
-GATEWAY_PORT=8080
+ORDER_PORT=8084
+PAYMENT_PORT=8085
+SEARCH_PORT=8086
 
 # 启动函数
 start_service() {
@@ -22,10 +25,14 @@ start_service() {
     local jar=$2
     local port=$3
     
-    echo -e "${GREEN}Starting ${name} on port ${port}...${NC}"
-    nohup java -jar "${jar}" --server.port=${port} > /app/work/logs/bypass/${name}.log 2>&1 &
-    echo $! > /tmp/${name}.pid
-    echo -e "${GREEN}${name} started (PID: $(cat /tmp/${name}.pid))${NC}"
+    if [ -f "${jar}" ]; then
+        echo -e "${GREEN}Starting ${name} on port ${port}...${NC}"
+        nohup java -jar "${jar}" --server.port=${port} > /app/work/logs/bypass/${name}.log 2>&1 &
+        echo $! > /tmp/${name}.pid
+        echo -e "${GREEN}${name} started (PID: $(cat /tmp/${name}.pid))${NC}"
+    else
+        echo -e "${YELLOW}${name} JAR not found, skipping...${NC}"
+    fi
 }
 
 # 检查 MySQL 和 Redis
@@ -49,23 +56,29 @@ echo ""
 
 # 1. User Service
 start_service "user-service" "${PROJECT_DIR}/pawfinder-user/target/pawfinder-user-1.0.0-SNAPSHOT.jar" $USER_PORT
-
-# 等待服务启动
 sleep 3
 
 # 2. Pet Service
 start_service "pet-service" "${PROJECT_DIR}/pawfinder-pet/target/pawfinder-pet-1.0.0-SNAPSHOT.jar" $PET_PORT
-
-# 等待服务启动
 sleep 3
 
 # 3. Adoption Service
 start_service "adoption-service" "${PROJECT_DIR}/pawfinder-adoption/target/pawfinder-adoption-1.0.0-SNAPSHOT.jar" $ADOPTION_PORT
-
-# 等待服务启动
 sleep 3
 
-# 4. Gateway Service (最后启动)
+# 4. Order Service
+start_service "order-service" "${PROJECT_DIR}/pawfinder-order/target/pawfinder-order-1.0.0-SNAPSHOT.jar" $ORDER_PORT
+sleep 3
+
+# 5. Payment Service
+start_service "payment-service" "${PROJECT_DIR}/pawfinder-payment/target/pawfinder-payment-1.0.0-SNAPSHOT.jar" $PAYMENT_PORT
+sleep 3
+
+# 6. Search Service
+start_service "search-service" "${PROJECT_DIR}/pawfinder-search/target/pawfinder-search-1.0.0-SNAPSHOT.jar" $SEARCH_PORT
+sleep 3
+
+# 7. Gateway Service (最后启动)
 start_service "gateway-service" "${PROJECT_DIR}/pawfinder-gateway/target/pawfinder-gateway-1.0.0-SNAPSHOT.jar" $GATEWAY_PORT
 
 echo ""
@@ -78,11 +91,6 @@ echo "  - Gateway:    http://localhost:${GATEWAY_PORT}"
 echo "  - User:       http://localhost:${USER_PORT}"
 echo "  - Pet:        http://localhost:${PET_PORT}"
 echo "  - Adoption:   http://localhost:${ADOPTION_PORT}"
-echo ""
-echo "API Docs:"
-echo "  - Gateway Swagger:   http://localhost:${GATEWAY_PORT}/swagger-ui.html"
-echo "  - User Swagger:      http://localhost:${USER_PORT}/swagger-ui.html"
-echo "  - Pet Swagger:        http://localhost:${PET_PORT}/swagger-ui.html"
-echo "  - Adoption Swagger:   http://localhost:${ADOPTION_PORT}/swagger-ui.html"
-echo ""
-echo "Logs: /app/work/logs/bypass/"
+echo "  - Order:      http://localhost:${ORDER_PORT}"
+echo "  - Payment:    http://localhost:${PAYMENT_PORT}"
+echo "  - Search:     http://localhost:${SEARCH_PORT}"

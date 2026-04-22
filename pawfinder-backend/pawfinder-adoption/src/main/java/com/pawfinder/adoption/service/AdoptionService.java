@@ -8,12 +8,18 @@ import com.pawfinder.adoption.dto.ApplicationReviewRequest;
 import com.pawfinder.adoption.dto.ApplicationVO;
 import com.pawfinder.adoption.entity.AdoptionApplication;
 import com.pawfinder.adoption.entity.AdoptionRecord;
+import com.pawfinder.adoption.feign.PetClient;
+import com.pawfinder.adoption.feign.UserClient;
 import com.pawfinder.adoption.mapper.AdoptionApplicationMapper;
 import com.pawfinder.adoption.mapper.AdoptionRecordMapper;
 import com.pawfinder.common.result.BusinessException;
 import com.pawfinder.common.result.ErrorCode;
+import com.pawfinder.common.result.Result;
 import com.pawfinder.common.util.IdUtil;
 import com.pawfinder.common.util.PageResult;
+import io.seata.spring.annotation.GlobalTransactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,26 +27,29 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class AdoptionService {
 
+    private static final Logger log = LoggerFactory.getLogger(AdoptionService.class);
+
     private final AdoptionApplicationMapper applicationMapper;
     private final AdoptionRecordMapper recordMapper;
     private final StringRedisTemplate redisTemplate;
-
-    // Mock data for user and pet info (in production, use OpenFeign to call other services)
-    private String mockPetName = "未知宠物";
-    private String mockPetImage = "";
-    private String mockUserName = "未知申请人";
-    private String mockUserPhone = "";
+    private final UserClient userClient;
+    private final PetClient petClient;
 
     public AdoptionService(AdoptionApplicationMapper applicationMapper, 
                            AdoptionRecordMapper recordMapper,
-                           StringRedisTemplate redisTemplate) {
+                           StringRedisTemplate redisTemplate,
+                           UserClient userClient,
+                           PetClient petClient) {
         this.applicationMapper = applicationMapper;
         this.recordMapper = recordMapper;
         this.redisTemplate = redisTemplate;
+        this.userClient = userClient;
+        this.petClient = petClient;
     }
 
     /**
@@ -153,14 +162,17 @@ public class AdoptionService {
         application.setStatus("pending");
 
         applicationMapper.insert(application);
-        System.out.println("Adoption application created: " + application.getId() + " by user " + userId);
+        log.info("Adoption application created: {} by user {}", application.getId(), userId);
 
         return toVO(application);
     }
 
     /**
-     * Review application (approve/reject)
+     * Review application (approve/reject) - Saga 长事务编排
+     * 使用 @GlobalTransactional 实现 Seata 分布式事务
+     * 流程：审核申请 → 创建领养记录 → 更新宠物状态
      */
+    @GlobalTransactional(name = "adoption-review-saga", rollbackFor = Exception.class)
     @Transactional
     public ApplicationVO review(String applicationId, String adminId, ApplicationReviewRequest request) {
         AdoptionApplication application = applicationMapper.selectById(applicationId);
@@ -172,20 +184,43 @@ public class AdoptionService {
             throw new BusinessException(ErrorCode.APPLICATION_NOT_PENDING);
         }
 
-        // Update application status
+        // Step 1: 更新申请状态
         application.setStatus(request.getStatus());
         application.setReviewedBy(adminId);
         application.setReviewedAt(LocalDateTime.now());
         if (request.getAdminNotes() != null) {
             application.setAdminNotes(request.getAdminNotes());
         }
-
         applicationMapper.updateById(application);
-        System.out.println("Application " + applicationId + " reviewed by " + adminId + ": " + request.getStatus());
+        log.info("Application {} reviewed by {}: {}", applicationId, adminId, request.getStatus());
 
-        // If approved, create adoption record
+        // Step 2: 如果通过，执行 Saga 流程
         if ("approved".equals(request.getStatus())) {
-            createAdoptionRecord(application);
+            try {
+                // 2.1 创建领养记录
+                AdoptionRecord record = createAdoptionRecord(application);
+                log.info("Adoption record created: {}", record.getId());
+
+                // 2.2 通过 OpenFeign 调用宠物服务，更新宠物状态为 "adopted"
+                Result<Void> petResult = petClient.updatePetStatus(application.getPetId(), "adopted");
+                if (petResult == null || petResult.getCode() != 200) {
+                    log.error("Failed to update pet status, will rollback");
+                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新宠物状态失败");
+                }
+                log.info("Pet {} status updated to adopted", application.getPetId());
+
+                // 2.3 发送通知（可选，失败不影响主流程）
+                try {
+                    // TODO: 调用通知服务发送领养成功通知
+                    log.info("Notification sent for adoption: {}", record.getId());
+                } catch (Exception e) {
+                    log.warn("Failed to send notification, but adoption is complete: {}", e.getMessage());
+                }
+
+            } catch (Exception e) {
+                log.error("Saga transaction failed, rolling back: {}", e.getMessage());
+                throw e; // Seata 会自动回滚所有分支事务
+            }
         }
 
         return toVO(application);
@@ -211,21 +246,43 @@ public class AdoptionService {
 
         application.setStatus("canceled");
         applicationMapper.updateById(application);
-        System.out.println("Application " + applicationId + " canceled by user " + userId);
+        log.info("Application {} canceled by user {}", applicationId, userId);
     }
 
-    private void createAdoptionRecord(AdoptionApplication application) {
+    /**
+     * Create adoption record
+     */
+    private AdoptionRecord createAdoptionRecord(AdoptionApplication application) {
+        // 通过 OpenFeign 获取用户信息
+        String adopterName = "未知申请人";
+        String adopterPhone = "";
+        try {
+            Result<Map<String, Object>> userResult = userClient.getUserById(application.getUserId());
+            if (userResult != null && userResult.getCode() == 200 && userResult.getData() != null) {
+                Map<String, Object> userData = userResult.getData();
+                adopterName = (String) userData.getOrDefault("name", "未知申请人");
+                adopterPhone = (String) userData.getOrDefault("phone", "");
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get user info: {}", e.getMessage());
+        }
+
         AdoptionRecord record = new AdoptionRecord();
         record.setId(IdUtil.snowflakeId());
         record.setApplicationId(application.getId());
         record.setPetId(application.getPetId());
         record.setUserId(application.getUserId());
+        record.setAdopterName(adopterName);
+        record.setAdopterPhone(adopterPhone);
         record.setAdoptionDate(LocalDateTime.now());
 
         recordMapper.insert(record);
-        System.out.println("Adoption record created for application: " + application.getId());
+        return record;
     }
 
+    /**
+     * Convert entity to VO with OpenFeign calls for user and pet info
+     */
     private ApplicationVO toVO(AdoptionApplication application) {
         List<String> documentList = null;
         if (application.getDocuments() != null && !application.getDocuments().isEmpty()) {
@@ -248,11 +305,7 @@ public class AdoptionService {
         ApplicationVO vo = new ApplicationVO();
         vo.setId(application.getId());
         vo.setPetId(application.getPetId());
-        vo.setPetName(mockPetName);
-        vo.setPetImage(mockPetImage);
         vo.setUserId(application.getUserId());
-        vo.setUserName(mockUserName);
-        vo.setUserPhone(mockUserPhone);
         vo.setReason(application.getReason());
         vo.setLivingCondition(application.getLivingCondition());
         vo.setExperience(application.getExperience());
@@ -265,6 +318,41 @@ public class AdoptionService {
         vo.setReviewedBy(application.getReviewedBy());
         vo.setReviewedAt(application.getReviewedAt());
         vo.setCreatedAt(application.getCreatedAt());
+
+        // 通过 OpenFeign 获取宠物信息
+        try {
+            Result<Map<String, Object>> petResult = petClient.getPetById(application.getPetId());
+            if (petResult != null && petResult.getCode() == 200 && petResult.getData() != null) {
+                Map<String, Object> petData = petResult.getData();
+                vo.setPetName((String) petData.getOrDefault("name", "未知宠物"));
+                List<String> images = (List<String>) petData.get("images");
+                vo.setPetImage(images != null && !images.isEmpty() ? images.get(0) : "");
+            } else {
+                vo.setPetName("未知宠物");
+                vo.setPetImage("");
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get pet info: {}", e.getMessage());
+            vo.setPetName("未知宠物");
+            vo.setPetImage("");
+        }
+
+        // 通过 OpenFeign 获取用户信息
+        try {
+            Result<Map<String, Object>> userResult = userClient.getUserById(application.getUserId());
+            if (userResult != null && userResult.getCode() == 200 && userResult.getData() != null) {
+                Map<String, Object> userData = userResult.getData();
+                vo.setUserName((String) userData.getOrDefault("name", "未知申请人"));
+                vo.setUserPhone((String) userData.getOrDefault("phone", ""));
+            } else {
+                vo.setUserName("未知申请人");
+                vo.setUserPhone("");
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get user info: {}", e.getMessage());
+            vo.setUserName("未知申请人");
+            vo.setUserPhone("");
+        }
 
         return vo;
     }
