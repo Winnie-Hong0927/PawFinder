@@ -101,6 +101,18 @@ public class PetService {
     }
 
     /**
+     * List all pets (for search service sync)
+     */
+    public List<PetVO> listAll() {
+        LambdaQueryWrapper<Pet> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Pet::getStatus, "available");
+        queryWrapper.orderByDesc(Pet::getCreatedAt);
+
+        List<Pet> pets = petMapper.selectList(queryWrapper);
+        return pets.stream().map(this::toVO).toList();
+    }
+
+    /**
      * Create new pet
      */
     @Transactional

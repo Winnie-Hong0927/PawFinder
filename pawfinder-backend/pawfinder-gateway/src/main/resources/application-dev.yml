@@ -1,0 +1,72 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+  
+  # 允许 Bean 覆盖，解决 Sentinel 冲突
+  main:
+    allow-bean-definition-overriding: true
+  
+  cloud:
+    # 开发环境禁用 Nacos
+    nacos:
+      discovery:
+        enabled: false
+      config:
+        enabled: false
+    
+    # 开发环境禁用 Sentinel
+    sentinel:
+      enabled: false
+      filter:
+        enabled: false
+    
+    # Gateway 路由配置 - 直连模式
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      
+      routes:
+        # User Service - 直连 8081
+        - id: user-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/user/**
+
+        # Pet Service - 直连 8082
+        - id: pet-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/pet/**
+
+        # Adoption Service - 直连 8083
+        - id: adoption-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/adoption/**
+
+        # Order Service - 直连 8084
+        - id: order-service
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/order/**
+
+        # Payment Service - 直连 8085
+        - id: payment-service
+          uri: http://localhost:8085
+          predicates:
+            - Path=/api/payment/**
+
+        # Search Service - 直连 8086
+        - id: search-service
+          uri: http://localhost:8086
+          predicates:
+            - Path=/api/search/**
+
+# 日志级别
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG

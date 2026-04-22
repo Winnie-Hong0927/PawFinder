@@ -25,4 +25,10 @@ public interface PetClient {
     Result<Map<String, Object>> listPets(@RequestParam(required = false) String status,
                                           @RequestParam(defaultValue = "1") int page,
                                           @RequestParam(defaultValue = "100") int size);
+
+    /**
+     * 获取所有宠物（用于同步到 ES）
+     */
+    @GetMapping("/pets/all")
+    Result<Map<String, Object>> getAllPets();
 }

@@ -45,6 +45,14 @@ public class Result<T> {
         return new Result<>(e.getCode(), e.getMessage(), null);
     }
 
+    public static <T> Result<T> fail(ErrorCode errorCode, String message) {
+        return new Result<>(errorCode.getCode(), message, null);
+    }
+
+    public static <T> Result<T> fail(int code, String message) {
+        return new Result<>(code, message, null);
+    }
+
     public int getCode() {
         return code;
     }

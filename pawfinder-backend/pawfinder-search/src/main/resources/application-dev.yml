@@ -1,0 +1,44 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: search-service
+  
+  # 开发环境禁用 Nacos
+  cloud:
+    nacos:
+      discovery:
+        enabled: false
+      config:
+        enabled: false
+  
+  # Elasticsearch 配置
+  elasticsearch:
+    uris: http://localhost:9200
+    username: 
+    password: 
+
+# OpenFeign 配置 - 直连模式
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+  sentinel:
+    enabled: false
+
+# Feign 静态 URL 配置（开发环境直连）
+pet-service:
+  ribbon:
+    listOfServers: localhost:8082
+
+ribbon:
+  nacos:
+    enabled: false
+
+# Elasticsearch 索引配置
+elasticsearch:
+  index:
+    pet: pawfinder_pets

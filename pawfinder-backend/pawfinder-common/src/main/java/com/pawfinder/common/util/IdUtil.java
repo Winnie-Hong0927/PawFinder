@@ -1,6 +1,7 @@
 package com.pawfinder.common.util;
 
 import cn.hutool.core.lang.Snowflake;
+import cn.hutool.core.util.RandomUtil;
 
 /**
  * ID generation utility
@@ -21,5 +22,12 @@ public class IdUtil {
      */
     public static String uuid() {
         return cn.hutool.core.util.IdUtil.fastSimpleUUID();
+    }
+
+    /**
+     * Generate random numbers with specified length
+     */
+    public static String randomNumbers(int length) {
+        return RandomUtil.randomNumbers(length);
     }
 }

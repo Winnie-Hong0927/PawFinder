@@ -36,6 +36,13 @@ public class PetController {
         return Result.success(result);
     }
 
+    @Operation(summary = "获取所有宠物列表(供搜索服务调用)")
+    @GetMapping("/all")
+    public Result<java.util.List<PetVO>> listAll() {
+        java.util.List<PetVO> pets = petService.listAll();
+        return Result.success(pets);
+    }
+
     @Operation(summary = "获取宠物详情")
     @GetMapping("/{id}")
     public Result<PetVO> getById(@PathVariable String id) {

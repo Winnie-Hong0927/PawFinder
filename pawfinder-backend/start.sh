@@ -27,7 +27,7 @@ start_service() {
     
     if [ -f "${jar}" ]; then
         echo -e "${GREEN}Starting ${name} on port ${port}...${NC}"
-        nohup java -jar "${jar}" --server.port=${port} > /app/work/logs/bypass/${name}.log 2>&1 &
+        nohup java -jar "${jar}" --server.port=${port} --spring.profiles.active=dev > /app/work/logs/bypass/${name}.log 2>&1 &
         echo $! > /tmp/${name}.pid
         echo -e "${GREEN}${name} started (PID: $(cat /tmp/${name}.pid))${NC}"
     else

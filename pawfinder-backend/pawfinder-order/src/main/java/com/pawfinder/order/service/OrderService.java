@@ -66,7 +66,8 @@ public class OrderService extends ServiceImpl<OrderMapper, Order> {
                 .eq(Order::getUserId, userId)
                 .orderByDesc(Order::getCreatedAt));
         
-        return new PageResult<>(result.getRecords(), result.getTotal(), page, size);
+        long pages = (result.getTotal() + size - 1) / size;
+        return new PageResult<>(result.getTotal(), page, size, pages, result.getRecords());
     }
 
     /**

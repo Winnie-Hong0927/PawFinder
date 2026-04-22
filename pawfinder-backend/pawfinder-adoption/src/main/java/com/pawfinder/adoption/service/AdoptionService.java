@@ -202,7 +202,9 @@ public class AdoptionService {
                 log.info("Adoption record created: {}", record.getId());
 
                 // 2.2 通过 OpenFeign 调用宠物服务，更新宠物状态为 "adopted"
-                Result<Void> petResult = petClient.updatePetStatus(application.getPetId(), "adopted");
+                Map<String, String> statusRequest = new java.util.HashMap<>();
+                statusRequest.put("status", "adopted");
+                Result<Void> petResult = petClient.updatePetStatus(application.getPetId(), statusRequest);
                 if (petResult == null || petResult.getCode() != 200) {
                     log.error("Failed to update pet status, will rollback");
                     throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新宠物状态失败");

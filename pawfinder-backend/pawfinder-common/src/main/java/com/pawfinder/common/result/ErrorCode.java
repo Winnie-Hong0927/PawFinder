@@ -17,6 +17,8 @@ public enum ErrorCode {
     // Server errors
     INTERNAL_ERROR(500, "服务器内部错误"),
     SERVICE_UNAVAILABLE(503, "服务不可用"),
+    SYSTEM_ERROR(500, "系统错误"),
+    SERVICE_CALL_FAILED(504, "服务调用失败"),
 
     // User errors (1001-1999)
     USER_NOT_FOUND(1001, "用户不存在"),
@@ -41,9 +43,15 @@ public enum ErrorCode {
     // Order errors (5001-5999)
     ORDER_NOT_FOUND(5001, "订单不存在"),
     ORDER_EXPIRED(5002, "订单已过期"),
+    ORDER_STATUS_ERROR(5003, "订单状态错误"),
 
     // Payment errors (6001-6999)
-    PAYMENT_FAILED(6001, "支付失败");
+    PAYMENT_FAILED(6001, "支付失败"),
+    TRANSACTION_NOT_FOUND(6002, "交易记录不存在"),
+    PAYMENT_ERROR(6003, "支付处理错误"),
+
+    // Search errors (7001-7999)
+    SEARCH_ERROR(7001, "搜索失败");
 
     private final int code;
     private final String message;

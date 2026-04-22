@@ -2,156 +2,189 @@ package com.pawfinder.search.service;
 
 import com.pawfinder.common.result.BusinessException;
 import com.pawfinder.common.result.ErrorCode;
+import com.pawfinder.common.result.Result;
+import com.pawfinder.common.util.PageResult;
 import com.pawfinder.search.entity.PetDocument;
+import com.pawfinder.search.feign.PetClient;
 import com.pawfinder.search.repository.PetRepository;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.elasticsearch.client.elc.NativeQuery;
-import org.springframework.data.elasticsearch.core.ReactiveElasticsearchOperations;
-import org.springframework.data.elasticsearch.core.SearchHit;
-import org.springframework.data.elasticsearch.core.SearchHits;
-import org.springframework.data.elasticsearch.core.query.Query;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import co.elastic.clients.elasticsearch._types.query_dsl.*;
-
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 搜索服务
- * 
- * 提供 Elasticsearch 全文检索功能
  */
-@Slf4j
 @Service
 public class SearchService {
 
-    @Autowired
-    private PetRepository petRepository;
+    private static final Logger log = LoggerFactory.getLogger(SearchService.class);
 
-    @Autowired
-    private ReactiveElasticsearchOperations elasticsearchOperations;
+    private final PetRepository petRepository;
+    private final PetClient petClient;
 
-    /**
-     * 全文搜索宠物
-     * 
-     * 支持搜索字段：名称、品种、描述、性格特点、位置
-     */
-    public Mono<Map<String, Object>> searchPets(String keyword, String species, String gender, 
-                                                  String size, String status, int page, int size) {
-        // 构建查询条件
-        List<Query> mustQueries = new ArrayList<>();
-        List<Query> shouldQueries = new ArrayList<>();
-
-        // 关键词搜索（多字段匹配）
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            MultiMatchQuery multiMatchQuery = MultiMatchQuery.of(m -> m
-                    .query(keyword)
-                    .fields("name^3", "breed^2", "description", "traits", "shelterLocation", "institutionName")
-                    .type(TextQueryType.BestFields)
-            );
-            shouldQueries.add(Query.of(q -> q.multiMatch(multiMatchQuery)));
-        }
-
-        // 物种过滤
-        if (species != null && !species.isEmpty()) {
-            TermQuery termQuery = TermQuery.of(t -> t.field("species").value(species));
-            mustQueries.add(Query.of(q -> q.term(termQuery)));
-        }
-
-        // 性别过滤
-        if (gender != null && !gender.isEmpty()) {
-            TermQuery termQuery = TermQuery.of(t -> t.field("gender").value(gender));
-            mustQueries.add(Query.of(q -> q.term(termQuery)));
-        }
-
-        // 体型过滤
-        if (size != null && !size.isEmpty()) {
-            TermQuery termQuery = TermQuery.of(t -> t.field("size").value(size));
-            mustQueries.add(Query.of(q -> q.term(termQuery)));
-        }
-
-        // 状态过滤（默认只搜索可领养的）
-        if (status == null || status.isEmpty()) {
-            status = "available";
-        }
-        TermQuery statusQuery = TermQuery.of(t -> t.field("status").value(status));
-        mustQueries.add(Query.of(q -> q.term(statusQuery)));
-
-        // 构建布尔查询
-        BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
-        if (!mustQueries.isEmpty()) {
-            boolQueryBuilder.must(mustQueries);
-        }
-        if (!shouldQueries.isEmpty()) {
-            boolQueryBuilder.should(shouldQueries);
-            boolQueryBuilder.minimumShouldMatch("1");
-        }
-
-        // 创建查询
-        NativeQuery searchQuery = NativeQuery.builder()
-                .withQuery(Query.of(q -> q.bool(boolQueryBuilder.build())))
-                .withPageable(PageRequest.of(page - 1, size))
-                .build();
-
-        // 执行搜索
-        return elasticsearchOperations.search(searchQuery, PetDocument.class)
-                .map(SearchHit::getContent)
-                .collectList()
-                .map(hits -> {
-                    Map<String, Object> result = new HashMap<>();
-                    result.put("records", hits);
-                    result.put("page", page);
-                    result.put("size", size);
-                    return result;
-                });
+    public SearchService(PetRepository petRepository, PetClient petClient) {
+        this.petRepository = petRepository;
+        this.petClient = petClient;
     }
 
     /**
-     * 索引宠物文档
+     * 综合搜索宠物
      */
-    public Mono<PetDocument> indexPet(PetDocument petDocument) {
-        return petRepository.save(petDocument)
-                .doOnSuccess(pet -> log.info("索引宠物成功: id={}", pet.getId()))
-                .doOnError(e -> log.error("索引宠物失败: {}", e.getMessage()));
+    public Result<PageResult<Map<String, Object>>> searchPets(
+            String keyword,
+            String species,
+            String gender,
+            String size,
+            String status,
+            int page,
+            int pageSize) {
+
+        try {
+            Pageable pageable = PageRequest.of(page - 1, pageSize);
+            Page<PetDocument> petPage;
+
+            if (keyword != null && !keyword.isEmpty()) {
+                // 关键词搜索
+                petPage = petRepository.searchByKeyword(keyword, pageable);
+            } else if (species != null) {
+                // 按物种搜索
+                petPage = petRepository.findBySpecies(species, pageable);
+            } else if (status != null) {
+                // 按状态搜索
+                petPage = petRepository.findByStatus(status, pageable);
+            } else {
+                // 搜索全部
+                petPage = petRepository.findAll(pageable);
+            }
+
+            // 过滤条件
+            List<Map<String, Object>> records = petPage.getContent().stream()
+                    .filter(doc -> gender == null || gender.equals(doc.getGender()))
+                    .filter(doc -> size == null || size.equals(doc.getSize()))
+                    .filter(doc -> status == null || status.equals(doc.getStatus()))
+                    .map(this::convertToMap)
+                    .collect(Collectors.toList());
+
+            PageResult<Map<String, Object>> result = new PageResult<>();
+            result.setRecords(records);
+            result.setTotal(petPage.getTotalElements());
+            result.setCurrent(page);
+            result.setSize(pageSize);
+            result.setPages(petPage.getTotalPages());
+
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("搜索宠物失败", e);
+            throw new BusinessException(ErrorCode.SEARCH_ERROR, "搜索失败: " + e.getMessage());
+        }
     }
 
     /**
-     * 批量索引宠物
+     * 同步宠物数据到 ES
      */
-    public Flux<PetDocument> indexPets(List<PetDocument> petDocuments) {
-        return petRepository.saveAll(petDocuments)
-                .doOnNext(pet -> log.debug("索引宠物: id={}", pet.getId()))
-                .doOnComplete(() -> log.info("批量索引完成: count={}", petDocuments.size()));
+    @SuppressWarnings("unchecked")
+    public Result<String> syncPetData() {
+        try {
+            // 从宠物服务获取所有宠物
+            Result<Map<String, Object>> petsResult = petClient.getAllPets();
+            if (petsResult.getCode() != 200 || petsResult.getData() == null) {
+                return Result.fail(ErrorCode.SERVICE_UNAVAILABLE.getCode(), "获取宠物数据失败");
+            }
+
+            // 从返回的 Map 中提取 records 列表
+            Map<String, Object> data = petsResult.getData();
+            List<Map<String, Object>> pets = (List<Map<String, Object>>) data.get("records");
+            if (pets == null) {
+                pets = new ArrayList<>();
+            }
+            
+            List<PetDocument> documents = pets.stream()
+                    .map(this::convertToDocument)
+                    .collect(Collectors.toList());
+
+            petRepository.saveAll(documents);
+
+            return Result.success("同步成功，共 " + documents.size() + " 条数据");
+        } catch (Exception e) {
+            log.error("同步宠物数据失败", e);
+            return Result.fail(ErrorCode.SEARCH_ERROR.getCode(), "同步失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 更新单个宠物索引
+     */
+    public Result<String> updatePetIndex(PetDocument petDocument) {
+        try {
+            petRepository.save(petDocument);
+            return Result.success("更新成功");
+        } catch (Exception e) {
+            log.error("更新宠物索引失败", e);
+            return Result.fail(ErrorCode.SEARCH_ERROR.getCode(), "更新失败: " + e.getMessage());
+        }
     }
 
     /**
      * 删除宠物索引
      */
-    public Mono<Void> deletePet(String petId) {
-        return petRepository.deleteById(petId)
-                .doOnSuccess(v -> log.info("删除宠物索引: id={}", petId));
+    public Result<String> deletePetIndex(String petId) {
+        try {
+            petRepository.deleteById(petId);
+            return Result.success("删除成功");
+        } catch (Exception e) {
+            log.error("删除宠物索引失败", e);
+            return Result.fail(ErrorCode.SEARCH_ERROR.getCode(), "删除失败: " + e.getMessage());
+        }
     }
 
     /**
-     * 更新宠物索引
+     * 转换为 Map
      */
-    public Mono<PetDocument> updatePet(PetDocument petDocument) {
-        return petRepository.save(petDocument)
-                .doOnSuccess(pet -> log.info("更新宠物索引: id={}", pet.getId()));
+    private Map<String, Object> convertToMap(PetDocument doc) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", doc.getId());
+        map.put("name", doc.getName());
+        map.put("species", doc.getSpecies());
+        map.put("breed", doc.getBreed());
+        map.put("gender", doc.getGender());
+        map.put("size", doc.getSize());
+        map.put("status", doc.getStatus());
+        map.put("description", doc.getDescription());
+        map.put("images", doc.getImages());
+        map.put("adoptionFee", doc.getAdoptionFee());
+        map.put("healthStatus", doc.getHealthStatus());
+        map.put("institutionId", doc.getInstitutionId());
+        map.put("shelterLocation", doc.getShelterLocation());
+        map.put("vaccinationStatus", doc.getVaccinationStatus());
+        map.put("sterilizationStatus", doc.getSterilizationStatus());
+        return map;
     }
 
     /**
-     * 根据ID获取宠物
+     * 转换为 ES 文档
      */
-    public Mono<PetDocument> getPetById(String petId) {
-        return petRepository.findById(petId)
-                .switchIfEmpty(Mono.error(new BusinessException(ErrorCode.PET_NOT_FOUND)));
+    private PetDocument convertToDocument(Map<String, Object> map) {
+        PetDocument doc = new PetDocument();
+        doc.setId((String) map.get("id"));
+        doc.setName((String) map.get("name"));
+        doc.setSpecies((String) map.get("species"));
+        doc.setBreed((String) map.get("breed"));
+        doc.setGender((String) map.get("gender"));
+        doc.setSize((String) map.get("size"));
+        doc.setStatus((String) map.get("status"));
+        doc.setDescription((String) map.get("description"));
+        doc.setInstitutionId((String) map.get("institutionId"));
+        doc.setShelterLocation((String) map.get("shelterLocation"));
+        doc.setHealthStatus((String) map.get("healthStatus"));
+        return doc;
     }
 }

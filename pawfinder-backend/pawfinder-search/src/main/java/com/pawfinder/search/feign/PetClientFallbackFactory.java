@@ -1,6 +1,7 @@
 package com.pawfinder.search.feign;
 
 import com.pawfinder.common.result.Result;
+import com.pawfinder.common.result.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
@@ -21,12 +22,17 @@ public class PetClientFallbackFactory implements FallbackFactory<PetClient> {
         return new PetClient() {
             @Override
             public Result<Map<String, Object>> getPet(String petId) {
-                return Result.fail("宠物服务暂不可用");
+                return Result.fail(ErrorCode.SERVICE_UNAVAILABLE, "宠物服务暂不可用");
             }
 
             @Override
             public Result<Map<String, Object>> listPets(String status, int page, int size) {
-                return Result.fail("宠物服务暂不可用");
+                return Result.fail(ErrorCode.SERVICE_UNAVAILABLE, "宠物服务暂不可用");
+            }
+
+            @Override
+            public Result<Map<String, Object>> getAllPets() {
+                return Result.fail(ErrorCode.SERVICE_UNAVAILABLE, "宠物服务暂不可用");
             }
         };
     }

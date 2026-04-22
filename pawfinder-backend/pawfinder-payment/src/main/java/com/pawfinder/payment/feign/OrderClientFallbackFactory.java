@@ -1,6 +1,7 @@
 package com.pawfinder.payment.feign;
 
 import com.pawfinder.common.result.Result;
+import com.pawfinder.common.result.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
@@ -21,12 +22,12 @@ public class OrderClientFallbackFactory implements FallbackFactory<OrderClient> 
         return new OrderClient() {
             @Override
             public Result<Map<String, Object>> getOrder(String orderId) {
-                return Result.fail("订单服务暂不可用");
+                return Result.fail(ErrorCode.SERVICE_CALL_FAILED, "订单服务暂不可用");
             }
 
             @Override
             public Result<Void> updateStatus(String orderId, Map<String, String> request) {
-                return Result.fail("订单服务暂不可用");
+                return Result.fail(ErrorCode.SERVICE_CALL_FAILED, "订单服务暂不可用");
             }
         };
     }
