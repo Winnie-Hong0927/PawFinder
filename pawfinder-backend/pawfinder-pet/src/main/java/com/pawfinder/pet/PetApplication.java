@@ -9,7 +9,6 @@ import org.springframework.context.annotation.ComponentScan;
 
 /**
  * 宠物服务启动类
- * 
  * 功能：
  * - 宠物CRUD
  * - 宠物状态管理
@@ -23,10 +22,5 @@ import org.springframework.context.annotation.ComponentScan;
 public class PetApplication {
     public static void main(String[] args) {
         SpringApplication.run(PetApplication.class, args);
-        System.out.println("========================================");
-        System.out.println("  PawFinder Pet Service Started!");
-        System.out.println("  Port: 8082");
-        System.out.println("  API Docs: http://localhost:8082/doc.html");
-        System.out.println("========================================");
     }
 }

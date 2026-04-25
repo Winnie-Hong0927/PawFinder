@@ -1,20 +1,13 @@
 package com.pawfinder.pet.dto;
 
+import com.pawfinder.pet.constants.PetStatusEnum;
+import lombok.Data;
+
 /**
  * Pet status update request DTO
  */
+@Data
 public class PetStatusUpdateRequest {
 
     private String status;
-
-    public PetStatusUpdateRequest() {
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
 }

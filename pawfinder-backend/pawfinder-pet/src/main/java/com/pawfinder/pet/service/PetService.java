@@ -1,12 +1,12 @@
 package com.pawfinder.pet.service;
 
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pawfinder.common.result.BusinessException;
 import com.pawfinder.common.result.ErrorCode;
 import com.pawfinder.common.util.IdUtil;
 import com.pawfinder.common.util.PageResult;
+import com.pawfinder.pet.constants.*;
 import com.pawfinder.pet.dto.PetCreateRequest;
 import com.pawfinder.pet.dto.PetStatusUpdateRequest;
 import com.pawfinder.pet.dto.PetVO;
@@ -15,10 +15,12 @@ import com.pawfinder.pet.mapper.PetMapper;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -43,6 +45,7 @@ public class PetService {
         if (pet == null) {
             throw new BusinessException(ErrorCode.PET_NOT_FOUND);
         }
+        if (pet.getStatus() == PetStatusEnum.DELETED.getValue()) return null;
         return toVO(pet);
     }
 
@@ -62,19 +65,18 @@ public class PetService {
         LambdaQueryWrapper<Pet> queryWrapper = new LambdaQueryWrapper<>();
 
         if (species != null && !species.isEmpty()) {
-            queryWrapper.eq(Pet::getSpecies, species);
+            queryWrapper.eq(Pet::getSpecies, PetSpeciesEnum.fromValue(species).getValue());
         }
         if (gender != null && !gender.isEmpty()) {
-            queryWrapper.eq(Pet::getGender, gender);
+            queryWrapper.eq(Pet::getGender, GenderEnum.fromValue(gender).getValue());
         }
         if (sizeParam != null && !sizeParam.isEmpty()) {
-            queryWrapper.eq(Pet::getSize, sizeParam);
+            queryWrapper.eq(Pet::getSize, SizeEnum.fromValue(sizeParam).getValue());
         }
         if (status != null && !status.isEmpty()) {
-            queryWrapper.eq(Pet::getStatus, status);
+            queryWrapper.eq(Pet::getStatus, PetStatusEnum.fromValue(status).getValue());
         } else {
-            // Default to available pets
-            queryWrapper.eq(Pet::getStatus, "available");
+            queryWrapper.eq(Pet::getStatus, PetStatusEnum.AVAILABLE.getValue());
         }
 
         if (keyword != null && !keyword.isEmpty()) {
@@ -105,7 +107,7 @@ public class PetService {
      */
     public List<PetVO> listAll() {
         LambdaQueryWrapper<Pet> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Pet::getStatus, "available");
+        queryWrapper.eq(Pet::getStatus, PetStatusEnum.AVAILABLE);
         queryWrapper.orderByDesc(Pet::getCreatedAt);
 
         List<Pet> pets = petMapper.selectList(queryWrapper);
@@ -118,27 +120,37 @@ public class PetService {
     @Transactional
     public PetVO create(PetCreateRequest request) {
         Pet pet = new Pet();
+        StringBuilder imagesBuilder = new StringBuilder();
+        request.getImages().forEach(image -> imagesBuilder.append(image).append("\n"));
+        pet.setImages(imagesBuilder.toString());
+
+        StringBuilder traitsBuilder = new StringBuilder();
+        request.getTraits().forEach(trait -> traitsBuilder.append(trait).append("\n"));
+        pet.setTraits(traitsBuilder.toString());
+
+        StringBuilder healthStatusBuilder = new StringBuilder();
+        request.getHealthStatus().forEach(status -> healthStatusBuilder.append(status.getValue()).append("\n"));
+        pet.setHealthStatus(healthStatusBuilder.toString());
+
         pet.setId(IdUtil.snowflakeId());
         pet.setName(request.getName());
-        pet.setSpecies(request.getSpecies());
+        pet.setSpecies(request.getSpecies().getValue());
         pet.setBreed(request.getBreed());
         pet.setAge(request.getAge());
-        pet.setGender(request.getGender());
-        pet.setSize(request.getSize());
-        pet.setImages(JSONUtil.toJsonStr(request.getImages()));
+        pet.setGender(request.getGender().getValue());
+        pet.setSize(request.getSize().getValue());
         pet.setDescription(request.getDescription());
-        pet.setTraits(request.getTraits() != null ? JSONUtil.toJsonStr(request.getTraits()) : null);
-        pet.setHealthStatus(request.getHealthStatus() != null ? request.getHealthStatus() : "健康");
         pet.setVaccinationStatus(request.getVaccinationStatus() != null ? request.getVaccinationStatus() : false);
         pet.setSterilizationStatus(request.getSterilizationStatus() != null ? request.getSterilizationStatus() : false);
         pet.setShelterLocation(request.getShelterLocation());
         pet.setAdoptionFee(request.getAdoptionFee() != null ? request.getAdoptionFee() : BigDecimal.ZERO);
-        pet.setStatus("available");
+        pet.setStatus(PetStatusEnum.AVAILABLE.getValue());
         pet.setInstitutionId(request.getInstitutionId());
+        pet.setCreatedBy(request.getCreatedBy());
+        pet.setCreatedAt(LocalDateTime.now());
+        pet.setUpdatedAt(LocalDateTime.now());
 
         petMapper.insert(pet);
-        System.out.println("Pet created: " + pet.getId());
-
         return toVO(pet);
     }
 
@@ -156,7 +168,7 @@ public class PetService {
             pet.setName(request.getName());
         }
         if (request.getSpecies() != null) {
-            pet.setSpecies(request.getSpecies());
+            pet.setSpecies(request.getSpecies().getValue());
         }
         if (request.getBreed() != null) {
             pet.setBreed(request.getBreed());
@@ -165,23 +177,30 @@ public class PetService {
             pet.setAge(request.getAge());
         }
         if (request.getGender() != null) {
-            pet.setGender(request.getGender());
+            pet.setGender(request.getGender().getValue());
         }
         if (request.getSize() != null) {
-            pet.setSize(request.getSize());
+            pet.setSize(request.getSize().getValue());
         }
         if (request.getImages() != null) {
-            pet.setImages(JSONUtil.toJsonStr(request.getImages()));
+            StringBuilder imagesBuilder = new StringBuilder();
+            request.getImages().forEach(image -> imagesBuilder.append(image).append("\n"));
+            pet.setImages(imagesBuilder.toString());
         }
         if (request.getDescription() != null) {
             pet.setDescription(request.getDescription());
         }
         if (request.getTraits() != null) {
-            pet.setTraits(JSONUtil.toJsonStr(request.getTraits()));
+            StringBuilder traitsBuilder = new StringBuilder();
+            request.getTraits().forEach(trait -> traitsBuilder.append(trait).append("\n"));
+            pet.setTraits(traitsBuilder.toString());
         }
         if (request.getHealthStatus() != null) {
-            pet.setHealthStatus(request.getHealthStatus());
+            StringBuilder healthStatusBuilder = new StringBuilder();
+            request.getHealthStatus().forEach(status -> healthStatusBuilder.append(status).append("\n"));
+            pet.setHealthStatus(healthStatusBuilder.toString());
         }
+
         if (request.getVaccinationStatus() != null) {
             pet.setVaccinationStatus(request.getVaccinationStatus());
         }
@@ -211,7 +230,8 @@ public class PetService {
             throw new BusinessException(ErrorCode.PET_NOT_FOUND);
         }
 
-        pet.setStatus(request.getStatus());
+        pet.setStatus(request.getStatus().toLowerCase());
+        pet.setUpdatedAt(LocalDateTime.now());
         petMapper.updateById(pet);
         System.out.println("Pet " + id + " status updated to: " + request.getStatus());
     }
@@ -226,7 +246,7 @@ public class PetService {
             throw new BusinessException(ErrorCode.PET_NOT_FOUND);
         }
 
-        pet.setDeletedAt(LocalDateTime.now());
+        pet.setStatus(PetStatusEnum.DELETED.getValue());
         petMapper.updateById(pet);
         System.out.println("Pet deleted: " + id);
     }
@@ -251,47 +271,60 @@ public class PetService {
     }
 
     private PetVO toVO(Pet pet) {
-        List<String> imageList = null;
-        if (pet.getImages() != null && !pet.getImages().isEmpty()) {
-            try {
-                imageList = JSONUtil.toList(pet.getImages(), String.class);
-            } catch (Exception e) {
-                imageList = Collections.singletonList(pet.getImages());
+        List<String> imagesList = new ArrayList<>();
+        String images = pet.getImages();
+        if (images != null) {
+            String[] split = StringUtils.split(images, "\n");
+            if (split != null) {
+                imagesList.addAll(Arrays.asList(split));
             }
         }
 
-        List<String> traitList = null;
-        if (pet.getTraits() != null && !pet.getTraits().isEmpty()) {
-            try {
-                traitList = JSONUtil.toList(pet.getTraits(), String.class);
-            } catch (Exception e) {
-                traitList = Collections.singletonList(pet.getTraits());
+        List<String> traitsList = new  ArrayList<>();
+        String traits = pet.getTraits();
+        if (traits != null) {
+            String[] split = StringUtils.split(traits, "\n");
+            if (split != null) {
+                traitsList.addAll(Arrays.asList(split));
             }
         }
 
-        // Get application count from cache
-        Long applicationCount = getApplicationCount(pet.getId());
+        List<HealthStatusEnum> healthStatusList = new ArrayList<>();
+        String healthStatus = pet.getHealthStatus();
+        if (healthStatus != null) {
+            String[] split = StringUtils.split(healthStatus, "\n");
+            if (split != null) {
+                for (String s : split) {
+                    if (!s.isEmpty()) {
+                        healthStatusList.add(HealthStatusEnum.fromValue(s));
+                    }
+                }
+            }
+        }
 
         PetVO vo = new PetVO();
         vo.setId(pet.getId());
         vo.setName(pet.getName());
-        vo.setSpecies(pet.getSpecies());
+        vo.setSpecies(PetSpeciesEnum.fromValue(pet.getSpecies()));
         vo.setBreed(pet.getBreed());
         vo.setAge(pet.getAge());
-        vo.setGender(pet.getGender());
-        vo.setSize(pet.getSize());
-        vo.setImages(imageList);
+        vo.setGender(GenderEnum.fromValue(pet.getGender()));
+        vo.setSize(SizeEnum.fromValue(pet.getSize()));
+        vo.setImages(imagesList);
         vo.setDescription(pet.getDescription());
-        vo.setTraits(traitList);
-        vo.setHealthStatus(pet.getHealthStatus());
+        vo.setTraits(traitsList);
+        vo.setHealthStatus(healthStatusList);
         vo.setVaccinationStatus(pet.getVaccinationStatus());
         vo.setSterilizationStatus(pet.getSterilizationStatus());
         vo.setShelterLocation(pet.getShelterLocation());
         vo.setAdoptionFee(pet.getAdoptionFee());
-        vo.setStatus(pet.getStatus());
+        vo.setStatus(PetStatusEnum.fromValue(pet.getStatus()));
         vo.setInstitutionId(pet.getInstitutionId());
         vo.setCreatedAt(pet.getCreatedAt());
-        vo.setApplicationCount(applicationCount);
+
+        // TODO 获取某个宠物被领养的数量（需要有一个领养表查询）
+//        Long applicationCount = getApplicationCount(pet.getId());
+//        vo.setApplicationCount(applicationCount);
 
         return vo;
     }

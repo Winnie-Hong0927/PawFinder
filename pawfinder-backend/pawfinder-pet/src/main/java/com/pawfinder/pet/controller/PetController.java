@@ -58,21 +58,21 @@ public class PetController {
     }
 
     @Operation(summary = "更新宠物")
-    @PutMapping("/{id}")
+    @PostMapping("/update/{id}")
     public Result<PetVO> update(@PathVariable String id, @RequestBody PetCreateRequest request) {
         PetVO pet = petService.update(id, request);
         return Result.success(pet);
     }
 
     @Operation(summary = "更新宠物状态")
-    @PutMapping("/{id}/status")
+    @PostMapping("/status/{id}")
     public Result<Void> updateStatus(@PathVariable String id, @Valid @RequestBody PetStatusUpdateRequest request) {
         petService.updateStatus(id, request);
         return Result.success();
     }
 
     @Operation(summary = "删除宠物")
-    @DeleteMapping("/{id}")
+    @PostMapping("/delete/{id}")
     public Result<Void> delete(@PathVariable String id) {
         petService.delete(id);
         return Result.success();

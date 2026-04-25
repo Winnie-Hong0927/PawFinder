@@ -33,15 +33,15 @@ const speciesOptions = [
 
 const sizeOptions = [
   { value: "", label: "所有体型" },
-  { value: "small", label: "小型" },
-  { value: "medium", label: "中型" },
-  { value: "large", label: "大型" },
+  { value: "SMALL", label: "小型" },
+  { value: "MEDIUM", label: "中型" },
+  { value: "LARGE", label: "大型" },
 ];
 
 const genderOptions = [
   { value: "", label: "全部" },
-  { value: "male", label: "♂ 公" },
-  { value: "female", label: "♀ 母" },
+  { value: "MALE", label: "♂ 公" },
+  { value: "FEMALE", label: "♀ 母" },
 ];
 
 export default function PetsPage() {
