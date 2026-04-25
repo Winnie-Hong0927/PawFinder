@@ -7,18 +7,19 @@
 ## 目录
 
 1. [数据库概述](#1-数据库概述)
-2. [表结构设计](#2-表结构设计)
-   - [users 用户表](#21-users-用户表)
-   - [institutions 机构表](#22-institutions-机构表)
-   - [pets 宠物表](#23-pets-宠物表)
-   - [adoption_applications 领养申请表](#24-adoption_applications-领养申请表)
-   - [adoption_records 领养记录表](#25-adoption_records-领养记录表)
-   - [orders 订单表](#26-orders-订单表)
-   - [payment_transactions 支付流水表](#27-payment_transactions-支付流水表)
-3. [建表 SQL 脚本](#3-建表-sql-脚本)
-4. [增删改查 SQL 汇总](#4-增删改查-sql-汇总)
-5. [索引设计](#5-索引设计)
-6. [Elasticsearch 索引设计](#6-elasticsearch-索引设计)
+2. [数据库架构设计](#2-数据库架构设计)
+3. [表结构设计](#3-表结构设计)
+   - [users 用户表](#31-users-用户表)
+   - [institutions 机构表](#32-institutions-机构表)
+   - [pets 宠物表](#33-pets-宠物表)
+   - [adoption_applications 领养申请表](#34-adoption_applications-领养申请表)
+   - [adoption_records 领养记录表](#35-adoption_records-领养记录表)
+   - [orders 订单表](#36-orders-订单表)
+   - [payment_transactions 支付流水表](#37-payment_transactions-支付流水表)
+4. [建表 SQL 脚本](#4-建表-sql-脚本)
+5. [增删改查 SQL 汇总](#5-增删改查-sql-汇总)
+6. [索引设计](#6-索引设计)
+7. [Elasticsearch 索引设计](#7-elasticsearch-索引设计)
 
 ---
 
@@ -32,16 +33,96 @@
 | 主键策略 | 雪花算法生成的分布式 ID (字符串类型) |
 | ORM 框架 | MyBatis-Plus |
 | 缓存 | Redis 7.0 |
+| 架构模式 | 微服务数据库分离（Database per Service） |
 
 ---
 
-## 2. 表结构设计
+## 2. 数据库架构设计
 
-### 2.1 users 用户表
+### 2.1 微服务数据库分离
+
+采用 **Database per Service** 模式，每个微服务拥有独立的数据库，实现数据隔离和独立扩展。
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        PawFinder 微服务架构                           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐          │
+│  │ user-service │    │ pet-service  │    │adoption-svc  │          │
+│  │   (8081)     │    │   (8082)     │    │   (8083)     │          │
+│  └──────┬───────┘    └──────┬───────┘    └──────┬───────┘          │
+│         │                   │                   │                   │
+│         ▼                   ▼                   ▼                   │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐          │
+│  │pawfinder_user│    │pawfinder_pet │    │pawfinder_    │          │
+│  │   数据库      │    │   数据库      │    │  adoption    │          │
+│  │              │    │              │    │   数据库      │          │
+│  │ - users      │    │ - pets       │    │ - adoption_  │          │
+│  │ - institutions│   │              │    │   applications│          │
+│  │              │    │              │    │ - adoption_  │          │
+│  │              │    │              │    │   records    │          │
+│  └──────────────┘    └──────────────┘    └──────────────┘          │
+│                                                                      │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐          │
+│  │order-service │    │payment-svc   │    │search-service│          │
+│  │   (8084)     │    │   (8085)     │    │   (8086)     │          │
+│  └──────┬───────┘    └──────┬───────┘    └──────┬───────┘          │
+│         │                   │                   │                   │
+│         ▼                   ▼                   ▼                   │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐          │
+│  │pawfinder_    │    │pawfinder_    │    │ Elasticsearch│          │
+│  │   order      │    │  payment     │    │   集群        │          │
+│  │   数据库      │    │   数据库      │    │              │          │
+│  │              │    │              │    │ - pets 索引  │          │
+│  │ - orders     │    │ - payment_   │    │              │          │
+│  │              │    │ transactions │    │              │          │
+│  └──────────────┘    └──────────────┘    └──────────────┘          │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.2 数据库分配表
+
+| 数据库名 | 所属服务 | 端口 | 包含表 |
+|----------|----------|------|--------|
+| `pawfinder_user` | user-service | 8081 | users, institutions |
+| `pawfinder_pet` | pet-service | 8082 | pets |
+| `pawfinder_adoption` | adoption-service | 8083 | adoption_applications, adoption_records |
+| `pawfinder_order` | order-service | 8084 | orders |
+| `pawfinder_payment` | payment-service | 8085 | payment_transactions |
+
+### 2.3 跨服务数据访问
+
+采用 **OpenFeign** 进行服务间调用，避免跨库 Join：
+
+| 调用场景 | 调用方 | 被调用方 | 说明 |
+|----------|--------|----------|------|
+| 获取宠物信息 | adoption-service | pet-service | 领养申请时验证宠物状态 |
+| 获取用户信息 | adoption-service | user-service | 获取申请人信息 |
+| 更新宠物状态 | adoption-service | pet-service | 领养成功后更新状态 |
+| 更新订单状态 | payment-service | order-service | 支付成功后更新订单 |
+
+### 2.4 分布式事务
+
+使用 **Seata AT 模式** 保证跨服务事务一致性：
+
+| 事务场景 | 参与服务 | 说明 |
+|----------|----------|------|
+| 领养审核 | adoption-service → pet-service | 审核通过时创建领养记录 + 更新宠物状态 |
+| 支付回调 | payment-service → order-service | 支付成功时更新流水 + 更新订单状态 |
+
+---
+
+## 3. 表结构设计
+
+### 3.1 users 用户表
 
 **表名**: `users`
 
-**所属服务**: pawfinder-user (用户服务)
+**所属数据库**: `pawfinder_user`
+
+**所属服务**: user-service (用户服务)
 
 **字段说明**:
 
@@ -70,11 +151,13 @@
 
 ---
 
-### 2.2 institutions 机构表
+### 3.2 institutions 机构表
 
 **表名**: `institutions`
 
-**所属服务**: pawfinder-user (用户服务)
+**所属数据库**: `pawfinder_user`
+
+**所属服务**: user-service (用户服务)
 
 **字段说明**:
 
@@ -100,11 +183,13 @@
 
 ---
 
-### 2.3 pets 宠物表
+### 3.3 pets 宠物表
 
 **表名**: `pets`
 
-**所属服务**: pawfinder-pet (宠物服务)
+**所属数据库**: `pawfinder_pet`
+
+**所属服务**: pet-service (宠物服务)
 
 **字段说明**:
 
@@ -134,11 +219,13 @@
 
 ---
 
-### 2.4 adoption_applications 领养申请表
+### 3.4 adoption_applications 领养申请表
 
 **表名**: `adoption_applications`
 
-**所属服务**: pawfinder-adoption (领养服务)
+**所属数据库**: `pawfinder_adoption`
+
+**所属服务**: adoption-service (领养服务)
 
 **字段说明**:
 
@@ -163,11 +250,13 @@
 
 ---
 
-### 2.5 adoption_records 领养记录表
+### 3.5 adoption_records 领养记录表
 
 **表名**: `adoption_records`
 
-**所属服务**: pawfinder-adoption (领养服务)
+**所属数据库**: `pawfinder_adoption`
+
+**所属服务**: adoption-service (领养服务)
 
 **字段说明**:
 
@@ -188,11 +277,13 @@
 
 ---
 
-### 2.6 orders 订单表
+### 3.6 orders 订单表
 
 **表名**: `orders`
 
-**所属服务**: pawfinder-order (订单服务)
+**所属数据库**: `pawfinder_order`
+
+**所属服务**: order-service (订单服务)
 
 **字段说明**:
 
@@ -215,11 +306,13 @@
 
 ---
 
-### 2.7 payment_transactions 支付流水表
+### 3.7 payment_transactions 支付流水表
 
 **表名**: `payment_transactions`
 
-**所属服务**: pawfinder-payment (支付服务)
+**所属数据库**: `pawfinder_payment`
+
+**所属服务**: payment-service (支付服务)
 
 **字段说明**:
 
@@ -239,25 +332,29 @@
 
 ---
 
-## 3. 建表 SQL 脚本
+## 4. 建表 SQL 脚本
+
+> 采用微服务数据库分离模式，每个服务拥有独立的数据库。
 
 ```sql
 -- =============================================
--- PawFinder 数据库初始化脚本
+-- PawFinder 微服务数据库初始化脚本
 -- 数据库: MySQL 8.0
 -- 字符集: utf8mb4
+-- 架构: Database per Service
 -- =============================================
 
--- 创建数据库
-CREATE DATABASE IF NOT EXISTS pawfinder 
+-- =============================================
+-- 1. 用户服务数据库 (pawfinder_user)
+-- 包含表: users, institutions
+-- =============================================
+CREATE DATABASE IF NOT EXISTS pawfinder_user 
 DEFAULT CHARACTER SET utf8mb4 
 DEFAULT COLLATE utf8mb4_unicode_ci;
 
-USE pawfinder;
+USE pawfinder_user;
 
--- =============================================
--- 1. users 用户表
--- =============================================
+-- 1.1 users 用户表
 CREATE TABLE IF NOT EXISTS `users` (
     `id` VARCHAR(32) NOT NULL COMMENT '主键，雪花算法ID',
     `phone` VARCHAR(20) DEFAULT NULL COMMENT '手机号',
@@ -281,9 +378,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
--- =============================================
--- 2. institutions 机构表
--- =============================================
+-- 1.2 institutions 机构表
 CREATE TABLE IF NOT EXISTS `institutions` (
     `id` VARCHAR(32) NOT NULL COMMENT '主键，雪花算法ID',
     `name` VARCHAR(200) NOT NULL COMMENT '机构名称',
@@ -310,8 +405,16 @@ CREATE TABLE IF NOT EXISTS `institutions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='机构表';
 
 -- =============================================
--- 3. pets 宠物表
+-- 2. 宠物服务数据库 (pawfinder_pet)
+-- 包含表: pets
 -- =============================================
+CREATE DATABASE IF NOT EXISTS pawfinder_pet 
+DEFAULT CHARACTER SET utf8mb4 
+DEFAULT COLLATE utf8mb4_unicode_ci;
+
+USE pawfinder_pet;
+
+-- 2.1 pets 宠物表
 CREATE TABLE IF NOT EXISTS `pets` (
     `id` VARCHAR(32) NOT NULL COMMENT '主键，雪花算法ID',
     `name` VARCHAR(100) DEFAULT NULL COMMENT '宠物名字',
@@ -344,8 +447,16 @@ CREATE TABLE IF NOT EXISTS `pets` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='宠物表';
 
 -- =============================================
--- 4. adoption_applications 领养申请表
+-- 3. 领养服务数据库 (pawfinder_adoption)
+-- 包含表: adoption_applications, adoption_records
 -- =============================================
+CREATE DATABASE IF NOT EXISTS pawfinder_adoption 
+DEFAULT CHARACTER SET utf8mb4 
+DEFAULT COLLATE utf8mb4_unicode_ci;
+
+USE pawfinder_adoption;
+
+-- 3.1 adoption_applications 领养申请表
 CREATE TABLE IF NOT EXISTS `adoption_applications` (
     `id` VARCHAR(32) NOT NULL COMMENT '主键，雪花算法ID',
     `pet_id` VARCHAR(32) NOT NULL COMMENT '申请领养的宠物ID',
@@ -370,9 +481,7 @@ CREATE TABLE IF NOT EXISTS `adoption_applications` (
     KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='领养申请表';
 
--- =============================================
--- 5. adoption_records 领养记录表
--- =============================================
+-- 3.2 adoption_records 领养记录表
 CREATE TABLE IF NOT EXISTS `adoption_records` (
     `id` VARCHAR(32) NOT NULL COMMENT '主键，雪花算法ID',
     `application_id` VARCHAR(32) NOT NULL COMMENT '关联的申请ID',
@@ -394,8 +503,16 @@ CREATE TABLE IF NOT EXISTS `adoption_records` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='领养记录表';
 
 -- =============================================
--- 6. orders 订单表
+-- 4. 订单服务数据库 (pawfinder_order)
+-- 包含表: orders
 -- =============================================
+CREATE DATABASE IF NOT EXISTS pawfinder_order 
+DEFAULT CHARACTER SET utf8mb4 
+DEFAULT COLLATE utf8mb4_unicode_ci;
+
+USE pawfinder_order;
+
+-- 4.1 orders 订单表
 CREATE TABLE IF NOT EXISTS `orders` (
     `id` VARCHAR(32) NOT NULL COMMENT '主键，UUID',
     `order_no` VARCHAR(50) NOT NULL COMMENT '订单号',
@@ -420,8 +537,16 @@ CREATE TABLE IF NOT EXISTS `orders` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单表';
 
 -- =============================================
--- 7. payment_transactions 支付流水表
+-- 5. 支付服务数据库 (pawfinder_payment)
+-- 包含表: payment_transactions
 -- =============================================
+CREATE DATABASE IF NOT EXISTS pawfinder_payment 
+DEFAULT CHARACTER SET utf8mb4 
+DEFAULT COLLATE utf8mb4_unicode_ci;
+
+USE pawfinder_payment;
+
+-- 5.1 payment_transactions 支付流水表
 CREATE TABLE IF NOT EXISTS `payment_transactions` (
     `id` VARCHAR(32) NOT NULL COMMENT '主键，UUID',
     `transaction_no` VARCHAR(50) NOT NULL COMMENT '支付流水号',
@@ -440,11 +565,22 @@ CREATE TABLE IF NOT EXISTS `payment_transactions` (
     KEY `idx_status` (`status`),
     KEY `idx_pay_time` (`pay_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付流水表';
+
+-- =============================================
+-- 6. 创建统一数据库用户
+-- =============================================
+CREATE USER IF NOT EXISTS 'pawfinder'@'%' IDENTIFIED BY 'pawfinder123';
+GRANT ALL PRIVILEGES ON pawfinder_user.* TO 'pawfinder'@'%';
+GRANT ALL PRIVILEGES ON pawfinder_pet.* TO 'pawfinder'@'%';
+GRANT ALL PRIVILEGES ON pawfinder_adoption.* TO 'pawfinder'@'%';
+GRANT ALL PRIVILEGES ON pawfinder_order.* TO 'pawfinder'@'%';
+GRANT ALL PRIVILEGES ON pawfinder_payment.* TO 'pawfinder'@'%';
+FLUSH PRIVILEGES;
 ```
 
 ---
 
-## 4. 增删改查 SQL 汇总
+## 5. 增删改查 SQL 汇总
 
 > 项目使用 MyBatis-Plus，大部分 SQL 由框架自动生成。以下列出各服务中实际使用的关键 SQL 操作。
 
@@ -804,7 +940,7 @@ WHERE transaction_no = ?;
 
 ---
 
-## 5. 索引设计
+## 6. 索引设计
 
 ### 5.1 主键索引
 
@@ -842,7 +978,7 @@ WHERE transaction_no = ?;
 
 ---
 
-## 6. Elasticsearch 索引设计
+## 7. Elasticsearch 索引设计
 
 ### 6.1 宠物索引 (pets)
 
