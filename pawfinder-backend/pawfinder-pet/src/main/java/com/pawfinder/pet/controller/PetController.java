@@ -77,4 +77,11 @@ public class PetController {
         petService.delete(id);
         return Result.success();
     }
+
+    @Operation(summary = "获取宠物申请人数")
+    @GetMapping("/{id}/application-count")
+    public Result<Long> getApplicationCount(@PathVariable String id) {
+        Long count = petService.getApplicationCount(id);
+        return Result.success(count);
+    }
 }
