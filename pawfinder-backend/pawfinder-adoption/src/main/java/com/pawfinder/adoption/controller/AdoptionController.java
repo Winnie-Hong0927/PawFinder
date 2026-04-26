@@ -70,8 +70,7 @@ public class AdoptionController {
             HttpServletRequest request,
             @Valid @RequestBody ApplicationCreateRequest createRequest) {
         String userId = getUserIdFromRequest(request);
-        ApplicationVO application = adoptionService.create(userId, createRequest);
-        return Result.success(application);
+        return adoptionService.create(userId, createRequest);
     }
 
     @Operation(summary = "审核申请（管理员）")

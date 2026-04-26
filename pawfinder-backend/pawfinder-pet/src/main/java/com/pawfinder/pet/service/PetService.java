@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -45,7 +46,7 @@ public class PetService {
         if (pet == null) {
             throw new BusinessException(ErrorCode.PET_NOT_FOUND);
         }
-        if (pet.getStatus() == PetStatusEnum.DELETED.getValue()) return null;
+        if (Objects.equals(pet.getStatus(), PetStatusEnum.DELETED.getValue())) return null;
         return toVO(pet);
     }
 

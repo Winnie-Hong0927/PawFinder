@@ -74,6 +74,8 @@ backend:
 logging:
   level:
     com.pawfinder: DEBUG
+    io.seata: WARN
+    com.alibaba.cloud.seata: WARN
 
 seata:
   enabled: true

@@ -3,6 +3,7 @@ package com.pawfinder.adoption.service;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pawfinder.adoption.constants.AdoptionStatusEnum;
 import com.pawfinder.adoption.dto.ApplicationCreateRequest;
 import com.pawfinder.adoption.dto.ApplicationReviewRequest;
 import com.pawfinder.adoption.dto.ApplicationVO;
@@ -134,7 +135,7 @@ public class AdoptionService {
      * Create new application
      */
     @Transactional
-    public ApplicationVO create(String userId, ApplicationCreateRequest request) {
+    public Result<ApplicationVO> create(String userId, ApplicationCreateRequest request) {
         // Check if user has already applied for this pet
         Long existingCount = applicationMapper.selectCount(
                 new LambdaQueryWrapper<AdoptionApplication>()
@@ -144,7 +145,7 @@ public class AdoptionService {
         );
 
         if (existingCount > 0) {
-            throw new BusinessException(ErrorCode.APPLICATION_ALREADY_EXISTS);
+            return Result.fail(ErrorCode.APPLICATION_ALREADY_EXISTS, ErrorCode.APPLICATION_ALREADY_EXISTS.getMessage());
         }
 
         AdoptionApplication application = new AdoptionApplication();
@@ -159,12 +160,12 @@ public class AdoptionService {
         application.setDocuments(request.getDocuments() != null ? JSONUtil.toJsonStr(request.getDocuments()) : null);
         application.setLivingConditionImages(request.getLivingConditionImages() != null
                 ? JSONUtil.toJsonStr(request.getLivingConditionImages()) : null);
-        application.setStatus("pending");
+        application.setStatus(AdoptionStatusEnum.PENDING);
 
         applicationMapper.insert(application);
         log.info("Adoption application created: {} by user {}", application.getId(), userId);
 
-        return toVO(application);
+        return Result.success(toVO(application));
     }
 
     /**
@@ -246,7 +247,7 @@ public class AdoptionService {
             throw new BusinessException(ErrorCode.APPLICATION_STATUS_ERROR);
         }
 
-        application.setStatus("canceled");
+        application.setStatus(AdoptionStatusEnum.CANCELED);
         applicationMapper.updateById(application);
         log.info("Application {} canceled by user {}", applicationId, userId);
     }
@@ -315,7 +316,7 @@ public class AdoptionService {
         vo.setOtherPetsDetail(application.getOtherPetsDetail());
         vo.setDocuments(documentList);
         vo.setLivingConditionImages(imageList);
-        vo.setStatus(application.getStatus());
+        vo.setStatus(application.getStatus().toString());
         vo.setAdminNotes(application.getAdminNotes());
         vo.setReviewedBy(application.getReviewedBy());
         vo.setReviewedAt(application.getReviewedAt());
