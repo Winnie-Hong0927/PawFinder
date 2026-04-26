@@ -48,7 +48,7 @@ public class AuthController {
     }
 
     @Operation(summary = "更新当前用户信息")
-    @PutMapping("/me")
+    @PostMapping("/update/me")
     public Result<UserVO> updateCurrentUser(
             HttpServletRequest request,
             @RequestBody UserUpdateRequest updateRequest) {

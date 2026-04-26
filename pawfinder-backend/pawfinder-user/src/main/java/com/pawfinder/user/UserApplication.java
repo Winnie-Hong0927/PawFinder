@@ -23,10 +23,5 @@ import org.springframework.context.annotation.ComponentScan;
 public class UserApplication {
     public static void main(String[] args) {
         SpringApplication.run(UserApplication.class, args);
-        System.out.println("========================================");
-        System.out.println("  PawFinder User Service Started!");
-        System.out.println("  Port: 8081");
-        System.out.println("  API Docs: http://localhost:8081/doc.html");
-        System.out.println("========================================");
     }
 }

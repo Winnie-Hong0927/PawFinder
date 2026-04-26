@@ -6,6 +6,8 @@ import com.pawfinder.common.result.ErrorCode;
 import com.pawfinder.common.util.IdUtil;
 import com.pawfinder.common.util.JwtUtil;
 import com.pawfinder.common.util.SmsUtil;
+import com.pawfinder.user.constants.AdopterStatusEnum;
+import com.pawfinder.user.constants.RoleEnum;
 import com.pawfinder.user.dto.*;
 import com.pawfinder.user.entity.Institution;
 import com.pawfinder.user.entity.User;
@@ -98,8 +100,8 @@ public class AuthService {
         user.setId(IdUtil.snowflakeId());
         user.setPhone(phone);
         user.setName("用户" + phone.substring(phone.length() - 4));
-        user.setRole("user");
-        user.setAdopterStatus("pending");
+        user.setRole(RoleEnum.USER);
+        user.setAdopterStatus(AdopterStatusEnum.UNAPPLIED);
         userMapper.insert(user);
         System.out.println("New user created: " + user.getId());
         return user;
@@ -144,6 +146,13 @@ public class AuthService {
         if (request.getIdCardNumber() != null) {
             user.setIdCardNumber(request.getIdCardNumber());
         }
+        if (request.getUserStatus() != null) {
+            user.setStatus(request.getUserStatus());
+        }
+        if (request.getAdopterStatus() != null) {
+            user.setAdopterStatus(request.getAdopterStatus());
+        }
+
 
         userMapper.updateById(user);
         System.out.println("User updated: " + userId);
@@ -157,12 +166,12 @@ public class AuthService {
         vo.setPhone(user.getPhone());
         vo.setName(user.getName());
         vo.setEmail(user.getEmail());
-        vo.setRole(user.getRole());
+        vo.setRole(user.getRole().getValue());
         vo.setInstitutionId(user.getInstitutionId());
         vo.setAvatarUrl(user.getAvatarUrl());
         vo.setBio(user.getBio());
         vo.setAddress(user.getAddress());
-        vo.setAdopterStatus(user.getAdopterStatus());
+        vo.setAdopterStatus(user.getAdopterStatus().getValue());
 
         // Load institution name if exists
         if (user.getInstitutionId() != null) {
