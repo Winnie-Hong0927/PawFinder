@@ -12,6 +12,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
+import static com.pawfinder.common.result.ErrorCode.SEND_VERIFICATION_CODE_FAIL;
+
 @Tag(name = "认证管理")
 @RestController
 @RequestMapping("/api/user/v1/auth")
@@ -26,8 +28,8 @@ public class AuthController {
     @Operation(summary = "发送验证码")
     @PostMapping("/send-code")
     public Result<String> sendCode(@RequestBody SendCodeRequest request) {
-        String code = authService.sendCode(request.getPhone());
-        return Result.success("验证码已发送", code);
+        boolean isSuccess = authService.sendCode(request.getPhone());
+        return isSuccess? Result.success("验证码已发送"):Result.fail(SEND_VERIFICATION_CODE_FAIL, "验证码发送失败");
     }
 
     @Operation(summary = "验证码登录")

@@ -5,6 +5,7 @@ import com.pawfinder.common.result.BusinessException;
 import com.pawfinder.common.result.ErrorCode;
 import com.pawfinder.common.util.IdUtil;
 import com.pawfinder.common.util.JwtUtil;
+import com.pawfinder.common.util.SmsUtil;
 import com.pawfinder.user.dto.*;
 import com.pawfinder.user.entity.Institution;
 import com.pawfinder.user.entity.User;
@@ -36,19 +37,21 @@ public class AuthService {
     /**
      * Send verification code
      */
-    public String sendCode(String phone) {
+    public boolean sendCode(String phone) {
         // Generate 6-digit code
         String code = String.valueOf((int) ((Math.random() * 9 + 1) * 100000));
+
+        try {
+            SmsUtil.sendSms(phone, code);
+        } catch (Exception e) {
+            return false;
+        }
 
         // Store in Redis with 5 minutes expiration
         String key = SMS_CODE_PREFIX + phone;
         redisTemplate.opsForValue().set(key, code, 5, TimeUnit.MINUTES);
 
-        System.out.println("SMS code sent to " + phone + ": " + code);
-
-        // In production, integrate with SMS gateway here
-        // For development, just return the code
-        return code;
+        return true;
     }
 
     /**

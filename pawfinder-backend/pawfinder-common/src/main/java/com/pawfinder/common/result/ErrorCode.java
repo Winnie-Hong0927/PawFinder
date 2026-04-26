@@ -26,6 +26,7 @@ public enum ErrorCode {
     INVALID_CREDENTIALS(1003, "用户名或密码错误"),
     PHONE_ALREADY_EXISTS(1004, "手机号已注册"),
     INVALID_VERIFICATION_CODE(1005, "验证码错误或已过期"),
+    SEND_VERIFICATION_CODE_FAIL(1006, "验证码发送失败"),
 
     // Pet errors (2001-2999)
     PET_NOT_FOUND(2001, "宠物不存在"),
