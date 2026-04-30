@@ -11,6 +11,7 @@ import com.pawfinder.adoption.entity.AdoptionApplication;
 import com.pawfinder.adoption.entity.AdoptionRecord;
 import com.pawfinder.adoption.feign.PetClient;
 import com.pawfinder.adoption.feign.UserClient;
+import com.pawfinder.adoption.feign.dto.PetDTO;
 import com.pawfinder.adoption.mapper.AdoptionApplicationMapper;
 import com.pawfinder.adoption.mapper.AdoptionRecordMapper;
 import com.pawfinder.common.result.BusinessException;
@@ -18,6 +19,9 @@ import com.pawfinder.common.result.ErrorCode;
 import com.pawfinder.common.result.Result;
 import com.pawfinder.common.util.IdUtil;
 import com.pawfinder.common.util.PageResult;
+import com.pawfinder.pet.dto.PetVO;
+import com.pawfinder.user.dto.UserVO;
+import com.pawfinder.user.entity.User;
 import io.seata.spring.annotation.GlobalTransactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +45,7 @@ public class AdoptionService {
     private final UserClient userClient;
     private final PetClient petClient;
 
-    public AdoptionService(AdoptionApplicationMapper applicationMapper, 
+    public AdoptionService(AdoptionApplicationMapper applicationMapper,
                            AdoptionRecordMapper recordMapper,
                            StringRedisTemplate redisTemplate,
                            UserClient userClient,
@@ -56,10 +60,10 @@ public class AdoptionService {
     /**
      * Get application by ID
      */
-    public ApplicationVO getById(String id) {
+    public Result<ApplicationVO> getById(String id) {
         AdoptionApplication application = applicationMapper.selectById(id);
         if (application == null) {
-            throw new BusinessException(ErrorCode.APPLICATION_NOT_FOUND);
+            return Result.fail(ErrorCode.APPLICATION_NOT_FOUND, ErrorCode.APPLICATION_NOT_FOUND.getMessage());
         }
         return toVO(application);
     }
@@ -68,12 +72,11 @@ public class AdoptionService {
      * Get application count for a pet
      */
     public Long getApplicationCountByPetId(String petId) {
-        Long count = applicationMapper.selectCount(
+        return applicationMapper.selectCount(
                 new LambdaQueryWrapper<AdoptionApplication>()
                         .eq(AdoptionApplication::getPetId, petId)
-                        .eq(AdoptionApplication::getStatus, "pending")
+                        .eq(AdoptionApplication::getStatus, AdoptionStatusEnum.PENDING)
         );
-        return count;
     }
 
     /**
@@ -97,7 +100,8 @@ public class AdoptionService {
         pageResult.setCurrent(result.getCurrent());
         pageResult.setSize(result.getSize());
         pageResult.setPages(result.getPages());
-        pageResult.setRecords(result.getRecords().stream().map(this::toVO).toList());
+        // todo
+        pageResult.setRecords(result.getRecords().stream().map(a -> toVO(a).getData()).toList());
         return pageResult;
     }
 
@@ -127,7 +131,7 @@ public class AdoptionService {
         pageResult.setCurrent(result.getCurrent());
         pageResult.setSize(result.getSize());
         pageResult.setPages(result.getPages());
-        pageResult.setRecords(result.getRecords().stream().map(this::toVO).toList());
+        pageResult.setRecords(result.getRecords().stream().map(a -> toVO(a).getData()).toList());
         return pageResult;
     }
 
@@ -162,10 +166,15 @@ public class AdoptionService {
                 ? JSONUtil.toJsonStr(request.getLivingConditionImages()) : null);
         application.setStatus(AdoptionStatusEnum.PENDING);
 
-        applicationMapper.insert(application);
-        log.info("Adoption application created: {} by user {}", application.getId(), userId);
+        application.setCreatedAt(LocalDateTime.now());
+        application.setUpdatedAt(LocalDateTime.now());
 
-        return Result.success(toVO(application));
+        Result<ApplicationVO> result = toVO(application);
+        if (result.getCode() == ErrorCode.SUCCESS.getCode()) {
+            applicationMapper.insert(application);
+            log.info("Adoption application created: {} by user {}", application.getId(), userId);
+        }
+        return result;
     }
 
     /**
@@ -175,14 +184,14 @@ public class AdoptionService {
      */
     @GlobalTransactional(name = "adoption-review-saga", rollbackFor = Exception.class)
     @Transactional
-    public ApplicationVO review(String applicationId, String adminId, ApplicationReviewRequest request) {
+    public Result<ApplicationVO> review(String applicationId, String adminId, ApplicationReviewRequest request) {
         AdoptionApplication application = applicationMapper.selectById(applicationId);
         if (application == null) {
-            throw new BusinessException(ErrorCode.APPLICATION_NOT_FOUND);
+            return Result.fail(ErrorCode.APPLICATION_NOT_FOUND, ErrorCode.APPLICATION_NOT_FOUND.getMessage());
         }
 
-        if (!"pending".equals(application.getStatus())) {
-            throw new BusinessException(ErrorCode.APPLICATION_NOT_PENDING);
+        if (!AdoptionStatusEnum.PENDING.equals(application.getStatus())) {
+            return Result.fail(ErrorCode.APPLICATION_NOT_PENDING, ErrorCode.APPLICATION_NOT_PENDING.getMessage());
         }
 
         // Step 1: 更新申请状态
@@ -196,7 +205,7 @@ public class AdoptionService {
         log.info("Application {} reviewed by {}: {}", applicationId, adminId, request.getStatus());
 
         // Step 2: 如果通过，执行 Saga 流程
-        if ("approved".equals(request.getStatus())) {
+        if (AdoptionStatusEnum.APPROVED.equals(request.getStatus())) {
             try {
                 // 2.1 创建领养记录
                 AdoptionRecord record = createAdoptionRecord(application);
@@ -208,7 +217,7 @@ public class AdoptionService {
                 Result<Void> petResult = petClient.updatePetStatus(application.getPetId(), statusRequest);
                 if (petResult == null || petResult.getCode() != 200) {
                     log.error("Failed to update pet status, will rollback");
-                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新宠物状态失败");
+                    return Result.fail(ErrorCode.SYSTEM_ERROR, "更新宠物状态失败");
                 }
                 log.info("Pet {} status updated to adopted", application.getPetId());
 
@@ -222,10 +231,9 @@ public class AdoptionService {
 
             } catch (Exception e) {
                 log.error("Saga transaction failed, rolling back: {}", e.getMessage());
-                throw e; // Seata 会自动回滚所有分支事务
+                return Result.fail(ErrorCode.SYSTEM_ERROR, "Seata事务执行失败，回滚所有分支事务");
             }
         }
-
         return toVO(application);
     }
 
@@ -233,23 +241,24 @@ public class AdoptionService {
      * Cancel application
      */
     @Transactional
-    public void cancel(String applicationId, String userId) {
+    public Result<Void> cancel(String applicationId, String userId) {
         AdoptionApplication application = applicationMapper.selectById(applicationId);
         if (application == null) {
-            throw new BusinessException(ErrorCode.APPLICATION_NOT_FOUND);
+            return Result.fail(ErrorCode.APPLICATION_NOT_FOUND, ErrorCode.APPLICATION_NOT_FOUND.getMessage());
         }
 
         if (!userId.equals(application.getUserId())) {
-            throw new BusinessException(ErrorCode.FORBIDDEN);
+            return Result.fail(ErrorCode.FORBIDDEN, ErrorCode.FORBIDDEN.getMessage());
         }
 
-        if (!"pending".equals(application.getStatus())) {
-            throw new BusinessException(ErrorCode.APPLICATION_STATUS_ERROR);
+        if (!AdoptionStatusEnum.PENDING.equals(application.getStatus())) {
+            return Result.fail(ErrorCode.APPLICATION_STATUS_ERROR, ErrorCode.APPLICATION_STATUS_ERROR.getMessage());
         }
 
         application.setStatus(AdoptionStatusEnum.CANCELED);
         applicationMapper.updateById(application);
         log.info("Application {} canceled by user {}", applicationId, userId);
+        return Result.success();
     }
 
     /**
@@ -260,11 +269,13 @@ public class AdoptionService {
         String adopterName = "未知申请人";
         String adopterPhone = "";
         try {
-            Result<Map<String, Object>> userResult = userClient.getUserById(application.getUserId());
+            Result<UserVO> userResult = userClient.getUserById(application.getUserId());
             if (userResult != null && userResult.getCode() == 200 && userResult.getData() != null) {
-                Map<String, Object> userData = userResult.getData();
-                adopterName = (String) userData.getOrDefault("name", "未知申请人");
-                adopterPhone = (String) userData.getOrDefault("phone", "");
+                UserVO temp = userResult.getData();
+                if (temp != null) {
+                    adopterName = temp.getName();
+                    adopterPhone = temp.getPhone();
+                }
             }
         } catch (Exception e) {
             log.warn("Failed to get user info: {}", e.getMessage());
@@ -286,7 +297,7 @@ public class AdoptionService {
     /**
      * Convert entity to VO with OpenFeign calls for user and pet info
      */
-    private ApplicationVO toVO(AdoptionApplication application) {
+    private Result<ApplicationVO> toVO(AdoptionApplication application) {
         List<String> documentList = null;
         if (application.getDocuments() != null && !application.getDocuments().isEmpty()) {
             try {
@@ -321,42 +332,44 @@ public class AdoptionService {
         vo.setReviewedBy(application.getReviewedBy());
         vo.setReviewedAt(application.getReviewedAt());
         vo.setCreatedAt(application.getCreatedAt());
+        vo.setUpdatedAt(application.getUpdatedAt());
 
         // 通过 OpenFeign 获取宠物信息
         try {
-            Result<Map<String, Object>> petResult = petClient.getPetById(application.getPetId());
-            if (petResult != null && petResult.getCode() == 200 && petResult.getData() != null) {
-                Map<String, Object> petData = petResult.getData();
-                vo.setPetName((String) petData.getOrDefault("name", "未知宠物"));
-                List<String> images = (List<String>) petData.get("images");
-                vo.setPetImage(images != null && !images.isEmpty() ? images.get(0) : "");
+            Result<PetVO> petResult = petClient.getPetById(application.getPetId());
+            if (petResult != null && petResult.getCode() == ErrorCode.SUCCESS.getCode() && petResult.getData() != null) {
+                PetVO petData = petResult.getData();
+                vo.setPetName(petData.getName());
+                StringBuilder imageBuilder = new StringBuilder();
+                for (String image : petData.getImages()) {
+                    imageBuilder.append(image);
+                }
+                vo.setPetImage(imageBuilder.toString());
             } else {
-                vo.setPetName("未知宠物");
-                vo.setPetImage("");
+                assert petResult != null;
+                return Result.fail(petResult.getCode(), petResult.getMessage());
             }
         } catch (Exception e) {
             log.warn("Failed to get pet info: {}", e.getMessage());
-            vo.setPetName("未知宠物");
-            vo.setPetImage("");
+            return Result.fail(ErrorCode.GET_PET_INFO_FAIL, ErrorCode.GET_PET_INFO_FAIL.getMessage());
         }
 
         // 通过 OpenFeign 获取用户信息
         try {
-            Result<Map<String, Object>> userResult = userClient.getUserById(application.getUserId());
-            if (userResult != null && userResult.getCode() == 200 && userResult.getData() != null) {
-                Map<String, Object> userData = userResult.getData();
-                vo.setUserName((String) userData.getOrDefault("name", "未知申请人"));
-                vo.setUserPhone((String) userData.getOrDefault("phone", ""));
+            Result<UserVO> userResult = userClient.getUserById(application.getUserId());
+            if (userResult != null && userResult.getCode() == ErrorCode.SUCCESS.getCode() && userResult.getData() != null) {
+                UserVO userData = userResult.getData();
+                vo.setUserName(userData.getName());
+                vo.setUserPhone(userData.getPhone());
             } else {
-                vo.setUserName("未知申请人");
-                vo.setUserPhone("");
+                assert userResult != null;
+                return Result.fail(userResult.getCode(), userResult.getMessage());
             }
         } catch (Exception e) {
             log.warn("Failed to get user info: {}", e.getMessage());
-            vo.setUserName("未知申请人");
-            vo.setUserPhone("");
+            return Result.fail(ErrorCode.GET_USER_INFO_FAIL, ErrorCode.GET_USER_INFO_FAIL.getMessage());
         }
 
-        return vo;
+        return Result.success(vo);
     }
 }

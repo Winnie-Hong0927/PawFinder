@@ -3,8 +3,8 @@ import com.aliyun.dypnsapi20170525.Client;
 import com.aliyun.dypnsapi20170525.models.SendSmsVerifyCodeRequest;
 
 public class SmsUtil {
-    private static final String ACCESS_KEY_ID = "";
-    private static final String ACCESS_KEY_SECRET = "";
+    private static final String ACCESS_KEY_ID = "LTAI5t9oSrArYJzidWzcqHZG";
+    private static final String ACCESS_KEY_SECRET = "E8vAzKab9THhiPJHNavseWd32CXFVd";
     private static final String ENDPOINT = "dypnsapi.aliyuncs.com";
     private static final String SIGN_NAME = "速通互联验证码";
     private static final String TEMPLATE_CODE = "100001";

@@ -44,15 +44,15 @@ public class UserService {
     private UserVO toVO(User user) {
         UserVO vo = new UserVO();
         vo.setId(user.getId());
-        vo.setPhone(user.getPhone());
-        vo.setNickname(user.getNickname());
-        vo.setAvatar(user.getAvatar());
-        vo.setRole(user.getRole());
-        vo.setRealName(user.getRealName());
-        vo.setIdCard(user.getIdCard());
+        vo.setBio(user.getBio());
         vo.setAddress(user.getAddress());
-        vo.setVerified(user.getVerified());
-        vo.setCreatedAt(user.getCreatedAt());
+        vo.setRole(user.getRole().getValue());
+        vo.setPhone(user.getPhone());
+        vo.setEmail(user.getEmail());
+        vo.setName(user.getName());
+        vo.setAdopterStatus(user.getAdopterStatus().getValue());
+        vo.setAvatarUrl(user.getAvatarUrl());
+        vo.setInstitutionId(user.getInstitutionId());
         return vo;
     }
 }

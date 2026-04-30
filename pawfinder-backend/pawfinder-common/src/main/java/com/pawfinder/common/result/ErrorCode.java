@@ -27,10 +27,12 @@ public enum ErrorCode {
     PHONE_ALREADY_EXISTS(1004, "手机号已注册"),
     INVALID_VERIFICATION_CODE(1005, "验证码错误或已过期"),
     SEND_VERIFICATION_CODE_FAIL(1006, "验证码发送失败"),
+    GET_USER_INFO_FAIL(1007, "获取用户信息失败"),
 
     // Pet errors (2001-2999)
     PET_NOT_FOUND(2001, "宠物不存在"),
     PET_NOT_AVAILABLE(2002, "宠物不可领养"),
+    GET_PET_INFO_FAIL(2003, "获取宠物信息失败"),
 
     // Adoption errors (3001-3999)
     APPLICATION_NOT_FOUND(3001, "申请不存在"),
@@ -52,7 +54,10 @@ public enum ErrorCode {
     PAYMENT_ERROR(6003, "支付处理错误"),
 
     // Search errors (7001-7999)
-    SEARCH_ERROR(7001, "搜索失败");
+    SEARCH_ERROR(7001, "搜索失败"),
+
+    // OpenFeign errors (8001-8999)
+    FALLBACK_ERROR(8001, "服务降级");
 
     private final int code;
     private final String message;

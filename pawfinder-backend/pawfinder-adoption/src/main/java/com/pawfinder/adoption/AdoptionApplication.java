@@ -8,14 +8,6 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.scheduling.annotation.EnableAsync;
 
-/**
- * 领养服务启动类
- * 
- * 功能：
- * - 领养申请管理（创建、查询、审核）
- * - 领养记录管理
- * - Saga 长事务编排（领养完成流程）
- */
 @SpringBootApplication(exclude = {
         GroovyTemplateAutoConfiguration.class
 })

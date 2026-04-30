@@ -2,6 +2,7 @@ package com.pawfinder.adoption.feign;
 
 import com.pawfinder.adoption.feign.dto.PetDTO;
 import com.pawfinder.common.result.Result;
+import com.pawfinder.pet.dto.PetVO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,13 +22,13 @@ public interface PetClient {
      * 根据宠物ID获取宠物信息
      */
     @GetMapping("/api/pet/v1/pets/{id}")
-    Result<PetDTO> getPetById(@PathVariable("id") String id);
+    Result<PetVO> getPetById(@PathVariable String id);
 
     /**
      * 更新宠物状态
      */
     @PostMapping("/api/pet/v1/pets/status/{id}")
-    Result<Void> updatePetStatus(@PathVariable("id") String id, @RequestBody Map<String, String> request);
+    Result<Void> updatePetStatus(@PathVariable String id, @RequestBody Map<String, String> request);
 
     /**
      * 获取宠物申请人数

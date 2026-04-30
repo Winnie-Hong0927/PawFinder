@@ -1,5 +1,4 @@
 package com.pawfinder.adoption.entity;
-
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -32,3 +31,4 @@ public class AdoptionApplication {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
+

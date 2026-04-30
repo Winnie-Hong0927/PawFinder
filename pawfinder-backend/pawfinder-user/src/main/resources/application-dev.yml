@@ -1,71 +1,31 @@
-server:
-  port: 8081
-
 spring:
   application:
     name: user-service
-  
-  # 开发环境禁用 Nacos
-  cloud:
-    nacos:
-      discovery:
-        enabled: false
-      config:
-        enabled: false
-  
-  # 数据库配置
   datasource:
+    # 数据库配置
     url: jdbc:mysql://localhost:3306/pawfinder_user?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: root
     password: 1234
     driver-class-name: com.mysql.cj.jdbc.Driver
-  
-  # Redis 配置
-  data:
-    redis:
-      host: localhost
-      port: 6379
-
-# MyBatis-Plus 配置
-mybatis-plus:
-  mapper-locations: classpath*:/mapper/**/*.xml
-  global-config:
-    db-config:
-      id-type: assign_uuid
-      logic-delete-field: deletedAt
-      logic-delete-value: "NOW()"
-      logic-not-delete-value: "NULL"
-  configuration:
-    map-underscore-to-camel-case: true
-
-# JWT 配置
-jwt:
-  secret: pawfinder-jwt-secret-key-for-development-only-2024
-  expiration: 86400000
-
-# 日志
-logging:
-  level:
-    com.pawfinder: DEBUG
-
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+      config:
+        # 如果使用import方式，这些全局配置依然生效
+        file-extension: yaml
+  config:
+    import:
+      # 使用optional:前缀，即使Nacos配置缺失，应用也能启动
+      - optional:nacos:${spring.application.name}.${spring.cloud.nacos.config.file-extension:yaml}
 
 seata:
   enabled: true
-  # 事务分组名称（可以自定义，但要与下面的 vgroupMapping 的 key 一致）
-  tx-service-group: default_tx_group
-
-  # 服务端映射配置
+  application-id: ${spring.application.name}
+  # 核心配置 ↓↓↓
   service:
-    # 将事务分组映射到 TC 集群名称（这里的 "default" 只是一个逻辑名，后面 grouplist 会用）
     vgroup-mapping:
-      default_tx_group: default
-    # 直接指定 TC 服务器的地址和端口（因为没使用注册中心）
+      default_tx_group: default  # 这里必须配
     grouplist:
-      default: 127.0.0.1:8091   # 请确保 Seata Server 在本机 8091 端口启动
-
-  # 注册中心：不使用 Nacos，采用 file 类型（或不配，默认从 file.conf 读，但建议显式指定）
-  registry:
-    type: file
-  # 配置中心：同样使用 file，避免去 Nacos 读配置
-  config:
-    type: file
+      default: 127.0.0.1:8091    # Seata 服务端地址，默认8091
+  tx-service-group: default_tx_group  # 绑定分组

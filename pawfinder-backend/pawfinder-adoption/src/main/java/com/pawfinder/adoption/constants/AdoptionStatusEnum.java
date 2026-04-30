@@ -1,28 +1,56 @@
 package com.pawfinder.adoption.constants;
 
-import com.baomidou.mybatisplus.annotation.EnumValue;
 import lombok.Getter;
 
 @Getter
 public enum AdoptionStatusEnum {
-    PENDING("PENDING"),
-    APPROVED("APPROVED"),
-    REJECTED("REJECTED"),
-    CANCELED("CANCELED");
 
-    @EnumValue
-    private final String value;
+    /**
+     * 待审核
+     */
+    PENDING("待审核"),
 
-    AdoptionStatusEnum(String value) {
-        this.value = value;
+    /**
+     * 已通过
+     */
+    APPROVED("已通过"),
+
+    /**
+     * 已拒绝
+     */
+    REJECTED("已拒绝"),
+
+    /**
+     * 已取消
+     */
+    CANCELED("已取消");
+
+    /**
+     * 中文描述
+     * -- GETTER --
+     *  获取中文描述
+
+     */
+    private final String desc;
+
+    AdoptionStatusEnum(String desc) {
+        this.desc = desc;
     }
 
-    public static AdoptionStatusEnum fromValue(String value) {
+    /**
+     * 根据枚举名称字符串获取枚举（常用于数据库值转枚举）
+     * @param name 枚举名称（如：PENDING）
+     * @return 对应的枚举
+     */
+    public static AdoptionStatusEnum getByName(String name) {
+        if (name == null) {
+            return null;
+        }
         for (AdoptionStatusEnum status : AdoptionStatusEnum.values()) {
-            if (status.value.equals(value)) {
+            if (status.name().equals(name)) {
                 return status;
             }
         }
-        throw new IllegalArgumentException("未知的领养申请状态: " + value);
+        return null;
     }
 }

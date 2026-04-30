@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pawfinder.common.result.BusinessException;
 import com.pawfinder.common.result.ErrorCode;
+import com.pawfinder.common.result.Result;
 import com.pawfinder.common.util.IdUtil;
 import com.pawfinder.common.util.PageResult;
 import com.pawfinder.pet.constants.*;
@@ -41,13 +42,15 @@ public class PetService {
     /**
      * Get pet by ID
      */
-    public PetVO getById(String id) {
+    public Result<PetVO> getById(String id) {
         Pet pet = petMapper.selectById(id);
         if (pet == null) {
-            throw new BusinessException(ErrorCode.PET_NOT_FOUND);
+            return Result.fail(ErrorCode.PET_NOT_FOUND, ErrorCode.PET_NOT_FOUND.getMessage());
         }
-        if (Objects.equals(pet.getStatus(), PetStatusEnum.DELETED.getValue())) return null;
-        return toVO(pet);
+        if (Objects.equals(pet.getStatus(), PetStatusEnum.DELETED.getValue())) {
+            return null;
+        }
+        return Result.success(toVO(pet));
     }
 
     /**
@@ -256,7 +259,7 @@ public class PetService {
      * Get application count for a pet
      */
     public Long getApplicationCount(String petId) {
-        // Try to get from cache first
+        //todo 不应该从缓存中拿数据
         String cachedCount = redisTemplate.opsForValue().get(APPLICATION_COUNT_PREFIX + petId);
         if (cachedCount != null) {
             return Long.parseLong(cachedCount);

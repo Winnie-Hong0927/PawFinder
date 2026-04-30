@@ -9,9 +9,6 @@ import lombok.Data;
  */
 @Data
 public class ApplicationReviewRequest {
-
-    @NotBlank(message = "审核状态不能为空")
     private AdoptionStatusEnum status;
-
     private String adminNotes;
 }

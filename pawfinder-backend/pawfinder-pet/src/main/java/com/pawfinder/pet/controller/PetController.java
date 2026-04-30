@@ -46,8 +46,7 @@ public class PetController {
     @Operation(summary = "获取宠物详情")
     @GetMapping("/{id}")
     public Result<PetVO> getById(@PathVariable String id) {
-        PetVO pet = petService.getById(id);
-        return Result.success(pet);
+        return petService.getById(id);
     }
 
     @Operation(summary = "创建宠物")

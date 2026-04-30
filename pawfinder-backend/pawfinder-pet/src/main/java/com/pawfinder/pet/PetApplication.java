@@ -7,13 +7,6 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.ComponentScan;
 
-/**
- * 宠物服务启动类
- * 功能：
- * - 宠物CRUD
- * - 宠物状态管理
- * - 同步宠物数据到Elasticsearch
- */
 @SpringBootApplication
 @EnableDiscoveryClient
 @EnableFeignClients(basePackages = "com.pawfinder")

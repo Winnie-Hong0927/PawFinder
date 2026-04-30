@@ -1,14 +1,14 @@
 package com.pawfinder.adoption.controller;
 
+import com.pawfinder.adoption.dto.ApplicationCreateRequest;
+import com.pawfinder.adoption.dto.ApplicationReviewRequest;
+import com.pawfinder.adoption.dto.ApplicationVO;
+import com.pawfinder.adoption.service.AdoptionService;
 import com.pawfinder.common.result.BusinessException;
 import com.pawfinder.common.result.ErrorCode;
 import com.pawfinder.common.result.Result;
 import com.pawfinder.common.util.JwtUtil;
 import com.pawfinder.common.util.PageResult;
-import com.pawfinder.adoption.dto.ApplicationCreateRequest;
-import com.pawfinder.adoption.dto.ApplicationReviewRequest;
-import com.pawfinder.adoption.dto.ApplicationVO;
-import com.pawfinder.adoption.service.AdoptionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,15 +22,19 @@ public class AdoptionController {
 
     private final AdoptionService adoptionService;
 
+/**
+ * 构造方法：通过依赖注入方式初始化AdoptionController
+ * @param adoptionService 注入的AdoptionService服务接口实现类实例
+ */
     public AdoptionController(AdoptionService adoptionService) {
+        // 将传入的adoptionService实例赋值给类的成员变量adoptionService
         this.adoptionService = adoptionService;
     }
 
     @Operation(summary = "获取申请详情")
     @GetMapping("/{id}")
     public Result<ApplicationVO> getById(@PathVariable String id) {
-        ApplicationVO application = adoptionService.getById(id);
-        return Result.success(application);
+        return adoptionService.getById(id);
     }
 
     @Operation(summary = "获取宠物申请人数")
@@ -74,24 +78,22 @@ public class AdoptionController {
     }
 
     @Operation(summary = "审核申请（管理员）")
-    @PutMapping("/{id}/review")
+    @PostMapping("/{id}/review")
     public Result<ApplicationVO> review(
             @PathVariable String id,
             HttpServletRequest request,
             @Valid @RequestBody ApplicationReviewRequest reviewRequest) {
         String adminId = getUserIdFromRequest(request);
-        ApplicationVO application = adoptionService.review(id, adminId, reviewRequest);
-        return Result.success(application);
+        return adoptionService.review(id, adminId, reviewRequest);
     }
 
     @Operation(summary = "取消申请")
-    @DeleteMapping("/{id}")
+    @PostMapping("/cancel/{id}")
     public Result<Void> cancel(
             @PathVariable String id,
             HttpServletRequest request) {
         String userId = getUserIdFromRequest(request);
-        adoptionService.cancel(id, userId);
-        return Result.success();
+        return adoptionService.cancel(id, userId);
     }
 
     private String getUserIdFromRequest(HttpServletRequest request) {

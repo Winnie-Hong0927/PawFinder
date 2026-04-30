@@ -14,12 +14,12 @@
     <modules>
         <module>pawfinder-common</module>
         <module>pawfinder-gateway</module>
-        <module>pawfinder-user</module>
         <module>pawfinder-pet</module>
-        <module>pawfinder-adoption</module>
         <module>pawfinder-order</module>
         <module>pawfinder-payment</module>
         <module>pawfinder-search</module>
+        <module>pawfinder-adoption</module>
+        <module>pawfinder-user</module>
     </modules>
 
     <properties>
@@ -156,6 +156,12 @@
             <dependency>
                 <groupId>com.pawfinder</groupId>
                 <artifactId>pawfinder-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.pawfinder</groupId>
+                <artifactId>pawfinder-user</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

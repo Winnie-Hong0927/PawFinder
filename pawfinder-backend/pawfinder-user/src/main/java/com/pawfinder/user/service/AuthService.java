@@ -178,6 +178,7 @@ public class AuthService {
             Institution institution = institutionMapper.selectById(user.getInstitutionId());
             if (institution != null) {
                 vo.setInstitutionName(institution.getName());
+                vo.setInstitutionId(institution.getId());
             }
         }
 

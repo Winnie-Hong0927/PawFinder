@@ -1,6 +1,6 @@
 package com.pawfinder.adoption.feign;
 
-import com.pawfinder.adoption.feign.dto.UserDTO;
+import com.pawfinder.user.dto.*;
 import com.pawfinder.common.result.Result;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,13 +16,13 @@ public interface UserClient {
 
     /**
      * 根据用户ID获取用户信息
-     */
+    */
     @GetMapping("/api/user/v1/users/{userId}")
-    Result<UserDTO> getUserById(@PathVariable("userId") String userId);
+    Result<UserVO> getUserById(@PathVariable String userId);
 
     /**
      * 根据Token获取当前用户信息
      */
     @GetMapping("/api/user/v1/auth/me")
-    Result<UserDTO> getCurrentUser(@RequestHeader("Authorization") String token);
+    Result<UserVO> getCurrentUser(@RequestHeader("Authorization") String token);
 }

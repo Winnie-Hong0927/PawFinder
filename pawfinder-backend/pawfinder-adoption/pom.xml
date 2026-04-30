@@ -22,6 +22,11 @@
             <artifactId>pawfinder-common</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.pawfinder</groupId>
+            <artifactId>pawfinder-user</artifactId>
+        </dependency>
+
         <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -101,6 +106,12 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.pawfinder</groupId>
+            <artifactId>pawfinder-pet</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 
