@@ -4,6 +4,9 @@ import com.pawfinder.common.result.BusinessException;
 import com.pawfinder.common.result.ErrorCode;
 import com.pawfinder.common.result.Result;
 import com.pawfinder.common.util.PageResult;
+import com.pawfinder.pet.dto.PetVO;
+import com.pawfinder.pet.entity.Pet;
+import com.pawfinder.search.convert.Pet2PetDoc;
 import com.pawfinder.search.entity.PetDocument;
 import com.pawfinder.search.feign.PetClient;
 import com.pawfinder.search.repository.PetRepository;
@@ -47,7 +50,6 @@ public class SearchService {
             String status,
             int page,
             int pageSize) {
-
         try {
             Pageable pageable = PageRequest.of(page - 1, pageSize);
             Page<PetDocument> petPage;
@@ -91,24 +93,18 @@ public class SearchService {
     /**
      * 同步宠物数据到 ES
      */
-    @SuppressWarnings("unchecked")
     public Result<String> syncPetData() {
         try {
             // 从宠物服务获取所有宠物
-            Result<Map<String, Object>> petsResult = petClient.getAllPets();
+            Result<List<PetVO>> petsResult = petClient.getAllPets();
             if (petsResult.getCode() != 200 || petsResult.getData() == null) {
                 return Result.fail(ErrorCode.SERVICE_UNAVAILABLE.getCode(), "获取宠物数据失败");
             }
 
             // 从返回的 Map 中提取 records 列表
-            Map<String, Object> data = petsResult.getData();
-            List<Map<String, Object>> pets = (List<Map<String, Object>>) data.get("records");
-            if (pets == null) {
-                pets = new ArrayList<>();
-            }
-            
-            List<PetDocument> documents = pets.stream()
-                    .map(this::convertToDocument)
+            List<PetVO> data = petsResult.getData();
+            List<PetDocument> documents = data.stream()
+                    .map(Pet2PetDoc::toPetDocument)
                     .collect(Collectors.toList());
 
             petRepository.saveAll(documents);

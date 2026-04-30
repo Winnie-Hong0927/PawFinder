@@ -100,7 +100,6 @@ public class AdoptionService {
         pageResult.setCurrent(result.getCurrent());
         pageResult.setSize(result.getSize());
         pageResult.setPages(result.getPages());
-        // todo
         pageResult.setRecords(result.getRecords().stream().map(a -> toVO(a).getData()).toList());
         return pageResult;
     }

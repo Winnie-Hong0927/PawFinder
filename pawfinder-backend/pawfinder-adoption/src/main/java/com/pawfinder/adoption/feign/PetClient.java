@@ -15,7 +15,7 @@ import java.util.Map;
  * 宠物服务 Feign 客户端
  * 用于调用宠物服务的接口
  */
-@FeignClient(name = "pet-service", fallbackFactory = PetClientFallbackFactory.class)
+@FeignClient(name = "pet-service", contextId = "petClientForAdoption", fallbackFactory = PetClientFallbackFactory.class)
 public interface PetClient {
 
     /**

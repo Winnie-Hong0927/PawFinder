@@ -24,41 +24,6 @@ spring:
   # Elasticsearch 配置
   elasticsearch:
     uris: http://localhost:9200
-  
-  # Nacos 配置中心
-  cloud:
-    nacos:
-      discovery:
-        server-addr: localhost:8848
-        namespace: pawfinder
-        group: DEFAULT_GROUP
-      config:
-        server-addr: localhost:8848
-        namespace: pawfinder
-        group: DEFAULT_GROUP
-        file-extension: yaml
-    
-    # Sentinel 配置
-    sentinel:
-      transport:
-        dashboard: localhost:8080
-        port: 8720
-      eager: true
-    
-    # Seata 配置
-    seata:
-      enabled: true
-      application-id: pet-service
-      tx-service-group: pawfinder-tx-group
-      service:
-        vgroup-mapping:
-          pawfinder-tx-group: default
-      registry:
-        type: nacos
-        nacos:
-          server-addr: localhost:8848
-          namespace: pawfinder
-          group: SEATA_GROUP
 
 # MyBatis-Plus 配置
 mybatis-plus:

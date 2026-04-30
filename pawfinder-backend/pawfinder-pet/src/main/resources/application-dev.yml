@@ -7,19 +7,6 @@ spring:
     username: root
     password: 1234
     driver-class-name: com.mysql.cj.jdbc.Driver
-  cloud:
-    nacos:
-      discovery:
-        server-addr: 127.0.0.1:8848
-      config:
-        server-addr: 127.0.0.1:8848
-        # 如果使用import方式，这些全局配置依然生效
-        file-extension: yaml
-  config:
-    import:
-      # 使用optional:前缀，即使Nacos配置缺失，应用也能启动
-      - optional:nacos:${spring.application.name}.${spring.cloud.nacos.config.file-extension:yaml}
-
 seata:
   enabled: true
   application-id: ${spring.application.name}

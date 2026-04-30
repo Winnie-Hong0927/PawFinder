@@ -42,4 +42,5 @@ public interface PetRepository extends ElasticsearchRepository<PetDocument, Stri
      * 按状态查询列表
      */
     List<PetDocument> findByStatus(String status);
+
 }

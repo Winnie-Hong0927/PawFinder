@@ -9,11 +9,11 @@ spring:
       discovery:
         server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
         namespace: ${NACOS_NAMESPACE:}
-        group: PAWFINDER_GROUP
+        group: DEFAULT_GROUP
       config:
         server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
         namespace: ${NACOS_NAMESPACE:}
-        group: PAWFINDER_GROUP
+        group: DEFAULT_GROUP
         file-extension: yml
     sentinel:
       transport:

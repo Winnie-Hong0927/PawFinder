@@ -2,7 +2,6 @@ package com.pawfinder.search.controller;
 
 import com.pawfinder.common.result.Result;
 import com.pawfinder.common.util.PageResult;
-import com.pawfinder.search.entity.PetDocument;
 import com.pawfinder.search.service.SearchService;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,7 +29,7 @@ public class SearchController {
             @RequestParam(required = false) String species,
             @RequestParam(required = false) String gender,
             @RequestParam(required = false) String size,
-            @RequestParam(required = false, defaultValue = "available") String status,
+            @RequestParam(required = false, defaultValue = "AVAILABLE") String status,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "12") int pageSize) {
 
@@ -42,23 +41,7 @@ public class SearchController {
      */
     @PostMapping("/sync")
     public Result<String> syncPetData() {
+        // todo 每次查找之前都需要调用这个方法刷新es 前端可以实现一下
         return searchService.syncPetData();
-    }
-
-    /**
-     * 更新宠物索引
-     */
-    @PutMapping("/pets/{petId}")
-    public Result<String> updatePetIndex(@PathVariable String petId, @RequestBody PetDocument petDocument) {
-        petDocument.setId(petId);
-        return searchService.updatePetIndex(petDocument);
-    }
-
-    /**
-     * 删除宠物索引
-     */
-    @DeleteMapping("/pets/{petId}")
-    public Result<String> deletePetIndex(@PathVariable String petId) {
-        return searchService.deletePetIndex(petId);
     }
 }

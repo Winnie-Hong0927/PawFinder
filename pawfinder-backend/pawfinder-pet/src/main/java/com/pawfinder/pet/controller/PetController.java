@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @Tag(name = "宠物管理")
 @RestController
 @RequestMapping("/api/pet/v1/pets")
@@ -38,8 +40,8 @@ public class PetController {
 
     @Operation(summary = "获取所有宠物列表(供搜索服务调用)")
     @GetMapping("/all")
-    public Result<java.util.List<PetVO>> listAll() {
-        java.util.List<PetVO> pets = petService.listAll();
+    public Result<List<PetVO>> listAll() {
+        List<PetVO> pets = petService.listAll();
         return Result.success(pets);
     }
 
