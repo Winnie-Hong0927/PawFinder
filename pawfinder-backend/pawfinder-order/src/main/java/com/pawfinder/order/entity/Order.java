@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @TableName("orders")
 public class Order {
 
-    @TableId(type = IdType.ASSIGN_UUID)
+    @TableId(type = IdType.INPUT)
     private String id;
 
     /** 订单号 */
@@ -32,7 +32,7 @@ public class Order {
     private BigDecimal amount;
 
     /** 订单状态: pending, paid, canceled, refunded */
-    private String status;
+    private OrderStatus status;
 
     /** 支付方式 */
     private String paymentMethod;

@@ -47,6 +47,7 @@ public enum ErrorCode {
     ORDER_NOT_FOUND(5001, "订单不存在"),
     ORDER_EXPIRED(5002, "订单已过期"),
     ORDER_STATUS_ERROR(5003, "订单状态错误"),
+    ORDER_ALREADY_EXIST(5004, "订单已存在"),
 
     // Payment errors (6001-6999)
     PAYMENT_FAILED(6001, "支付失败"),

@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: order-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+      config:
+        server-addr: 127.0.0.1:8848
+        file-extension: yaml
+  config:
+    import: optional:nacos:${spring.application.name}.yml
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.groovy.template.GroovyTemplateAutoConfiguration
+
+seata:
+  enabled: false  # 直接关闭 Seata，你现在不需要

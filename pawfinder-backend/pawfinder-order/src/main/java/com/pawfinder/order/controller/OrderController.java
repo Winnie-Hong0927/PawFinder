@@ -1,11 +1,16 @@
 package com.pawfinder.order.controller;
 
+import com.pawfinder.common.result.BusinessException;
+import com.pawfinder.common.result.ErrorCode;
 import com.pawfinder.common.result.Result;
+import com.pawfinder.common.util.JwtUtil;
 import com.pawfinder.common.util.PageResult;
 import com.pawfinder.order.entity.Order;
+import com.pawfinder.order.entity.OrderCreateRequest;
 import com.pawfinder.order.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -30,15 +35,13 @@ public class OrderController {
      */
     @PostMapping("/orders")
     @Operation(summary = "创建订单")
-    public Result<Order> createOrder(@RequestBody Map<String, Object> request,
-                                     @RequestHeader(value = "X-User-Id", required = false) String userId) {
-        String applicationId = (String) request.get("applicationId");
-        String petId = (String) request.get("petId");
-        BigDecimal amount = new BigDecimal(request.get("amount").toString());
-        String description = (String) request.get("description");
-        
-        Order order = orderService.createOrder(userId, applicationId, petId, amount, description);
-        return Result.success(order);
+    public Result<Order> createOrder(HttpServletRequest request, @RequestBody OrderCreateRequest orderCreateRequest) {
+        String userId = getUserIdFromRequest(request);
+        String applicationId = orderCreateRequest.getApplicationId();
+        String petId = orderCreateRequest.getPetId();
+        BigDecimal amount = orderCreateRequest.getAmount(); // todo amount需要和宠物的价钱一样 从前端传入
+        String  description = orderCreateRequest.getDescription();
+        return orderService.createOrder(userId, applicationId, petId, amount, description);
     }
 
     /**
@@ -47,10 +50,21 @@ public class OrderController {
     @GetMapping("/orders")
     @Operation(summary = "获取用户订单列表")
     public Result<PageResult<Order>> getUserOrders(
-            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            HttpServletRequest request,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
+        String userId = getUserIdFromRequest(request);
         PageResult<Order> result = orderService.getUserOrders(userId, page, size);
+        return Result.success(result);
+    }
+
+    @GetMapping("/all")
+    @Operation(summary = "获取所有订单列表")
+    public Result<PageResult<Order>> getAll(
+            // todo 需要鉴权 只有管理员才能看到所有信息
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PageResult<Order> result = orderService.getAll(page, size);
         return Result.success(result);
     }
 
@@ -72,20 +86,26 @@ public class OrderController {
      */
     @PostMapping("/orders/{orderNo}/cancel")
     @Operation(summary = "取消订单")
-    public Result<Void> cancelOrder(@PathVariable String orderNo,
-                                    @RequestHeader(value = "X-User-Id", required = false) String userId) {
-        orderService.cancelOrder(orderNo, userId);
-        return Result.success();
+    public Result<Void> cancelOrder(HttpServletRequest request, @PathVariable String orderNo) {
+        String userId = getUserIdFromRequest(request);
+        return orderService.cancelOrder(orderNo, userId);
     }
 
     /**
      * 内部接口 - 更新订单状态（供支付服务调用）
      */
-    @PutMapping("/internal/orders/{orderNo}/status")
+    @PostMapping("/internal/update/status")
     @Operation(summary = "更新订单状态（内部接口）")
-    public Result<Void> updateStatus(@PathVariable String orderNo, @RequestBody Map<String, String> request) {
-        String status = request.get("status");
-        orderService.updateStatus(orderNo, status);
-        return Result.success();
+    public Result<Void> updateStatus(@RequestParam String orderNo, @RequestParam String status) {
+        return orderService.updateStatus(orderNo, status);
+    }
+
+    private String getUserIdFromRequest(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+        String token = authHeader.substring(7);
+        return JwtUtil.getUserId(token);
     }
 }
