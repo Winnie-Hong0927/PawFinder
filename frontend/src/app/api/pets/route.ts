@@ -13,12 +13,6 @@ async function requestBackend<T>(
     'Content-Type': 'application/json',
   };
 
-  // 传递用户认证信息
-  const userId = request.headers.get("x-user-id");
-  const userRole = request.headers.get("x-user-role");
-  if (userId) headers['X-User-Id'] = userId;
-  if (userRole) headers['X-User-Role'] = userRole;
-
   // 如果前端有token，也传递
   const cookieHeader = request.headers.get("cookie") || "";
   if (cookieHeader.includes('token=')) {
@@ -38,7 +32,9 @@ async function requestBackend<T>(
 
 /**
  * GET /api/pets - 获取宠物列表
- * 前端代理层，转发到后端宠物服务
+ * 前端代理层，转发到后端宠物服务 GET /api/pet/v1/pets
+ * 
+ * 后端参数: page, size, species, gender, sizeParam, status, keyword
  */
 export async function GET(request: NextRequest) {
   try {
@@ -47,18 +43,20 @@ export async function GET(request: NextRequest) {
     // 构造后端请求参数
     const params = new URLSearchParams();
     const species = searchParams.get("species");
+    const gender = searchParams.get("gender");
     const size = searchParams.get("size");
-    const status = searchParams.get("status") || "available";
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "12");
-    const institutionId = searchParams.get("institutionId");
+    const status = searchParams.get("status");
+    const keyword = searchParams.get("keyword");
+    const page = searchParams.get("page") || "1";
+    const limit = searchParams.get("size") || searchParams.get("limit") || "10";
     
+    params.set('page', page);
+    params.set('size', limit);
     if (species) params.set('species', species);
-    if (size) params.set('size', size);
-    if (institutionId) params.set('institutionId', institutionId);
-    params.set('status', status);
-    params.set('current', String(page));
-    params.set('size', String(limit));
+    if (gender) params.set('gender', gender);
+    if (size) params.set('sizeParam', size); // 后端参数名是 sizeParam
+    if (status) params.set('status', status);
+    if (keyword) params.set('keyword', keyword);
 
     const backendUrl = `${API_ENDPOINTS.pets}?${params.toString()}`;
     const result = await requestBackend<{
@@ -94,31 +92,21 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/pets - 创建宠物
- * 前端代理层，转发到后端宠物服务
+ * 前端代理层，转发到后端宠物服务 POST /api/pet/v1/pets
  */
 export async function POST(request: NextRequest) {
   try {
-    const userId = request.headers.get("x-user-id");
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     const body = await request.json();
     
     const result = await requestBackend<{
       code: number;
       message: string;
-      data: string;
+      data: any;
     }>(API_ENDPOINTS.pets, {
       method: 'POST',
       body: JSON.stringify(body),
     }, request);
 
-    // 后端返回格式: { code: 200, message: 'success', data: 'petId' }
     if (result.code !== 200) {
       return NextResponse.json(
         { error: result.message || '创建宠物失败' },
@@ -128,7 +116,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      petId: result.data,
+      message: result.message || '创建成功',
+      pet: result.data,
     });
   } catch (error) {
     console.error("Create pet proxy error:", error);

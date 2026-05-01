@@ -1,4 +1,4 @@
-# PawFinder 前后端接口文档
+# PawFinder 前后端接口文档 v2.0
 
 ## 架构概述
 
@@ -12,13 +12,25 @@
                           ▼             │  └────┬────┘  └─────────────┘  │
                     ┌─────────────┐     │       │                        │
                     │ 统一响应格式 │     │       ▼                        │
-                    │ {success,   │     │  ┌─────────────┐               │
-                    │  data/error}│     │  │ Pet Svc     │               │
-                    └─────────────┘     │  │ (8082)      │               │
-                                        │  └─────────────┘               │
+                    │ {code,     │     │  ┌─────────────┐               │
+                    │  message,  │     │  │ Pet Svc     │               │
+                    │  data}     │     │  │ (8082)      │               │
+                    └─────────────┘     │  └─────────────┘               │
                                         │  ┌─────────────┐               │
                                         │  │ Adoption Svc│               │
                                         │  │ (8083)      │               │
+                                        │  └─────────────┘               │
+                                        │  ┌─────────────┐               │
+                                        │  │ Order Svc   │               │
+                                        │  │ (8084)      │               │
+                                        │  └─────────────┘               │
+                                        │  ┌─────────────┐               │
+                                        │  │ Payment Svc │               │
+                                        │  │ (8085)      │               │
+                                        │  └─────────────┘               │
+                                        │  ┌─────────────┐               │
+                                        │  │ Search Svc  │               │
+                                        │  │ (8086)      │               │
                                         │  └─────────────┘               │
                                         └─────────────────────────────────┘
 ```
@@ -35,6 +47,9 @@ export const API_CONFIG = {
     user: '/api/user',
     pet: '/api/pet',
     adoption: '/api/adoption',
+    order: '/api/order',
+    payment: '/api/payment',
+    search: '/api/search',
   },
   version: 'v1',
 };
@@ -46,6 +61,9 @@ export const API_CONFIG = {
 | 用户服务 | `/api/user/**` | localhost:8081 |
 | 宠物服务 | `/api/pet/**` | localhost:8082 |
 | 领养服务 | `/api/adoption/**` | localhost:8083 |
+| 订单服务 | `/api/order/**` | localhost:8084 |
+| 支付服务 | `/api/payment/**` | localhost:8085 |
+| 搜索服务 | `/api/search/**` | localhost:8086 |
 
 ---
 
@@ -57,14 +75,13 @@ export const API_CONFIG = {
 | 项目 | 说明 |
 |------|------|
 | **前端调用** | `POST /api/auth/send-code` |
-| **后端接口** | `POST http://localhost:8080/api/user/v1/auth/send-code` |
+| **后端接口** | `POST /api/user/v1/auth/send-code` |
 | **后端服务** | User Service (8081) |
 
 **请求参数**:
 ```json
 {
-  "phone": "13800138000",
-  "type": "login"  // 可选，默认 login
+  "phone": "13800138000"
 }
 ```
 
@@ -73,17 +90,7 @@ export const API_CONFIG = {
 {
   "code": 200,
   "message": "验证码已发送",
-  "data": "123456",  // 验证码（仅开发环境返回）
-  "timestamp": 1234567890
-}
-```
-
-**前端响应**:
-```json
-{
-  "success": true,
-  "message": "验证码已发送",
-  "debug_code": "123456"  // 仅开发环境
+  "data": "123456"
 }
 ```
 
@@ -93,7 +100,7 @@ export const API_CONFIG = {
 | 项目 | 说明 |
 |------|------|
 | **前端调用** | `POST /api/auth/verify-code` |
-| **后端接口** | `POST http://localhost:8080/api/user/v1/auth/verify-code` |
+| **后端接口** | `POST /api/user/v1/auth/verify-code` |
 | **后端服务** | User Service (8081) |
 
 **请求参数**:
@@ -101,7 +108,7 @@ export const API_CONFIG = {
 {
   "phone": "13800138000",
   "code": "123456",
-  "name": "张三"  // 可选，首次登录时设置用户名
+  "name": "张三"
 }
 ```
 
@@ -123,494 +130,473 @@ export const API_CONFIG = {
 }
 ```
 
-**前端响应** (同时设置 `token` Cookie):
-```json
-{
-  "success": true,
-  "message": "登录成功",
-  "user": {
-    "id": "uuid-xxx",
-    "phone": "13800138000",
-    "name": "张三",
-    "role": "user"
-  }
-}
-```
-
 ---
 
-#### 1.3 获取当前用户
+#### 1.3 获取当前用户信息
 | 项目 | 说明 |
 |------|------|
 | **前端调用** | `GET /api/auth/me` |
-| **后端接口** | `GET http://localhost:8080/api/user/v1/users/me` |
+| **后端接口** | `GET /api/user/v1/auth/me` |
 | **后端服务** | User Service (8081) |
 | **认证** | 需要 `Authorization: Bearer <token>` |
 
-**后端响应**:
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "id": "uuid-xxx",
-    "phone": "13800138000",
-    "name": "张三",
-    "role": "user",
-    "institutionId": "inst-xxx"
-  }
-}
-```
+---
+
+#### 1.4 更新当前用户信息
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `POST /api/auth/me` |
+| **后端接口** | `POST /api/user/v1/auth/update/me` |
+| **后端服务** | User Service (8081) |
+| **认证** | 需要 `Authorization: Bearer <token>` |
 
 ---
 
-### 2. 宠物模块 (Pet)
+### 2. 用户模块 (User)
 
-#### 2.1 获取宠物列表
+#### 2.1 获取用户详情
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `GET /api/users/{userId}` |
+| **后端接口** | `GET /api/user/v1/users/{userId}` |
+| **后端服务** | User Service (8081) |
+
+---
+
+#### 2.2 根据手机号获取用户
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `GET /api/users/phone/{phone}` |
+| **后端接口** | `GET /api/user/v1/users/phone/{phone}` |
+| **后端服务** | User Service (8081) |
+
+---
+
+### 3. 机构模块 (Institution)
+
+#### 3.1 获取机构列表
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `GET /api/institutions` |
+| **后端接口** | `GET /api/user/v1/institutions` |
+| **后端服务** | User Service (8081) |
+
+**请求参数** (Query String):
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | number | 否 | 页码，默认 1 |
+| size | number | 否 | 每页数量，默认 10 |
+| keyword | string | 否 | 搜索关键词 |
+
+---
+
+#### 3.2 获取机构详情
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `GET /api/institutions/{id}` |
+| **后端接口** | `GET /api/user/v1/institutions/{id}` |
+| **后端服务** | User Service (8081) |
+
+---
+
+#### 3.3 创建机构
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `POST /api/institutions` |
+| **后端接口** | `POST /api/user/v1/institutions` |
+| **后端服务** | User Service (8081) |
+
+---
+
+#### 3.4 更新机构
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `PUT /api/institutions/{id}` |
+| **后端接口** | `PUT /api/user/v1/institutions/{id}` |
+| **后端服务** | User Service (8081) |
+
+---
+
+### 4. 宠物模块 (Pet)
+
+#### 4.1 获取宠物列表
 | 项目 | 说明 |
 |------|------|
 | **前端调用** | `GET /api/pets` |
-| **后端接口** | `GET http://localhost:8080/api/pet/v1/pets` |
+| **后端接口** | `GET /api/pet/v1/pets` |
 | **后端服务** | Pet Service (8082) |
 
 **请求参数** (Query String):
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
+| page | number | 否 | 页码，默认 1 |
+| size | number | 否 | 每页数量，默认 10 |
 | species | string | 否 | 物种: dog/cat/rabbit/other |
-| size | string | 否 | 体型: small/medium/large |
-| status | string | 否 | 状态: available/pending/adopted/offline，默认 available |
-| institutionId | string | 否 | 机构ID |
-| page/current | number | 否 | 页码，默认 1 |
-| limit/size | number | 否 | 每页数量，默认 12 |
-
-**后端响应**:
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "records": [
-      {
-        "id": "pet-xxx",
-        "name": "旺财",
-        "species": "dog",
-        "breed": "金毛",
-        "age": "2岁",
-        "gender": "male",
-        "status": "available",
-        "images": ["url1", "url2"],
-        "institutionId": "inst-xxx"
-      }
-    ],
-    "total": 100,
-    "current": 1,
-    "size": 12,
-    "pages": 9
-  }
-}
-```
-
-**前端响应**:
-```json
-{
-  "success": true,
-  "pets": [...],
-  "total": 100,
-  "page": 1,
-  "limit": 12,
-  "pages": 9
-}
-```
+| gender | string | 否 | 性别: male/female |
+| sizeParam | string | 否 | 体型: small/medium/large |
+| status | string | 否 | 状态: available/pending/adopted/offline |
+| keyword | string | 否 | 搜索关键词 |
 
 ---
 
-#### 2.2 获取宠物详情
+#### 4.2 获取宠物详情
 | 项目 | 说明 |
 |------|------|
-| **前端调用** | `GET /api/pets/[id]` |
-| **后端接口** | `GET http://localhost:8080/api/pet/v1/pets/{id}` |
+| **前端调用** | `GET /api/pets/{id}` |
+| **后端接口** | `GET /api/pet/v1/pets/{id}` |
 | **后端服务** | Pet Service (8082) |
-
-**后端响应**:
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "id": "pet-xxx",
-    "name": "旺财",
-    "species": "dog",
-    "breed": "金毛",
-    "age": "2岁",
-    "gender": "male",
-    "size": "large",
-    "images": ["url1", "url2"],
-    "description": "性格温顺...",
-    "traits": ["友善", "活泼"],
-    "healthStatus": "健康",
-    "vaccinationStatus": true,
-    "sterilizationStatus": true,
-    "shelterLocation": "上海市浦东新区",
-    "adoptionFee": 0,
-    "status": "available",
-    "institutionId": "inst-xxx",
-    "institutionName": "上海浦东救助中心"
-  }
-}
-```
 
 ---
 
-#### 2.3 创建宠物
+#### 4.3 创建宠物
 | 项目 | 说明 |
 |------|------|
 | **前端调用** | `POST /api/pets` |
-| **后端接口** | `POST http://localhost:8080/api/pet/v1/pets` |
+| **后端接口** | `POST /api/pet/v1/pets` |
 | **后端服务** | Pet Service (8082) |
-| **认证** | 需要管理员权限 |
-
-**请求参数**:
-```json
-{
-  "name": "旺财",
-  "species": "dog",
-  "breed": "金毛",
-  "age": "2岁",
-  "gender": "male",
-  "size": "large",
-  "images": ["url1", "url2"],
-  "description": "性格温顺...",
-  "institutionId": "inst-xxx"
-}
-```
+| **认证** | 需要 `Authorization: Bearer <token>` |
 
 ---
 
-#### 2.4 更新宠物状态
+#### 4.4 更新宠物
 | 项目 | 说明 |
 |------|------|
-| **前端调用** | `PATCH /api/pets/[id]` |
-| **后端接口** | `PATCH http://localhost:8080/api/pet/v1/pets/{id}/status` |
+| **前端调用** | `PUT /api/pets/{id}` |
+| **后端接口** | `POST /api/pet/v1/pets/update/{id}` |
 | **后端服务** | Pet Service (8082) |
+| **认证** | 需要 `Authorization: Bearer <token>` |
 
-**请求参数**:
-```json
-{
-  "status": "adopted"
-}
-```
+> **注意**: 后端更新接口是 POST 而不是 PUT
 
 ---
 
-#### 2.5 获取宠物申请人数
+#### 4.5 更新宠物状态
 | 项目 | 说明 |
 |------|------|
-| **前端调用** | `GET /api/pets/[id]/applications-count` |
-| **后端接口** | `GET http://localhost:8080/api/adoption/v1/applications/pet/{petId}/count` |
+| **前端调用** | `POST /api/pets/{id}` (body: {status: "xxx"}) |
+| **后端接口** | `POST /api/pet/v1/pets/status/{id}` |
+| **后端服务** | Pet Service (8082) |
+| **认证** | 需要 `Authorization: Bearer <token>` |
+
+---
+
+#### 4.6 删除宠物
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `DELETE /api/pets/{id}` |
+| **后端接口** | `POST /api/pet/v1/pets/delete/{id}` |
+| **后端服务** | Pet Service (8082) |
+| **认证** | 需要 `Authorization: Bearer <token>` |
+
+> **注意**: 后端删除接口是 POST 而不是 DELETE
+
+---
+
+#### 4.7 获取宠物申请人数
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `GET /api/pets/{id}/applications-count` |
+| **后端接口** | `GET /api/pet/v1/pets/{id}/application-count` |
+| **后端服务** | Pet Service (8082) |
+
+---
+
+### 5. 领养模块 (Adoption)
+
+#### 5.1 获取申请列表（管理员）
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `GET /api/applications` |
+| **后端接口** | `GET /api/adoption/v1/applications` |
 | **后端服务** | Adoption Service (8083) |
+
+**请求参数** (Query String):
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | number | 否 | 页码，默认 1 |
+| size | number | 否 | 每页数量，默认 10 |
+| status | string | 否 | 状态: pending/approved/rejected/cancelled |
+| petId | string | 否 | 宠物ID |
+| userId | string | 否 | 用户ID |
+
+---
+
+#### 5.2 获取我的申请列表
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `GET /api/applications?my=true` |
+| **后端接口** | `GET /api/adoption/v1/applications/my` |
+| **后端服务** | Adoption Service (8083) |
+| **认证** | 需要 `Authorization: Bearer <token>` |
+
+---
+
+#### 5.3 获取申请详情
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `GET /api/applications/{id}` |
+| **后端接口** | `GET /api/adoption/v1/applications/{id}` |
+| **后端服务** | Adoption Service (8083) |
+
+---
+
+#### 5.4 提交领养申请
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `POST /api/applications` 或 `POST /api/adoptions/apply` |
+| **后端接口** | `POST /api/adoption/v1/applications` |
+| **后端服务** | Adoption Service (8083) |
+| **认证** | 需要 `Authorization: Bearer <token>` |
+
+**请求参数**:
+```json
+{
+  "petId": "pet-xxx",
+  "reason": "领养理由",
+  "livingCondition": "居住条件",
+  "livingConditionImages": ["url1", "url2"],
+  "experience": "养宠经验",
+  "hasOtherPets": true,
+  "otherPetsDetail": "其他宠物详情",
+  "documents": ["doc1", "doc2"]
+}
+```
+
+---
+
+#### 5.5 审核申请
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `PATCH /api/applications/{id}` |
+| **后端接口** | `POST /api/adoption/v1/applications/{id}/review` |
+| **后端服务** | Adoption Service (8083) |
+| **认证** | 需要 `Authorization: Bearer <token>` |
+
+**请求参数**:
+```json
+{
+  "status": "approved",
+  "adminNotes": "审核备注"
+}
+```
+
+> **注意**: 后端审核接口是 POST 而不是 PATCH
+
+---
+
+#### 5.6 取消申请
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `POST /api/applications/{id}` (body: {action: "cancel"}) |
+| **后端接口** | `POST /api/adoption/v1/applications/cancel/{id}` |
+| **后端服务** | Adoption Service (8083) |
+| **认证** | 需要 `Authorization: Bearer <token>` |
+
+---
+
+### 6. 订单模块 (Order)
+
+#### 6.1 创建订单
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `POST /api/orders` |
+| **后端接口** | `POST /api/order/v1/orders` |
+| **后端服务** | Order Service (8084) |
+| **认证** | 需要 `Authorization: Bearer <token>` |
+
+**请求参数**:
+```json
+{
+  "applicationId": "app-xxx",
+  "petId": "pet-xxx",
+  "amount": 100.00,
+  "description": "领养费用"
+}
+```
+
+---
+
+#### 6.2 获取用户订单列表
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `GET /api/orders` |
+| **后端接口** | `GET /api/order/v1/orders` |
+| **后端服务** | Order Service (8084) |
+| **认证** | 需要 `Authorization: Bearer <token>` |
+
+---
+
+#### 6.3 获取所有订单（管理员）
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `GET /api/orders?all=true` |
+| **后端接口** | `GET /api/order/v1/all` |
+| **后端服务** | Order Service (8084) |
+
+---
+
+#### 6.4 获取订单详情
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `GET /api/orders/{orderNo}` |
+| **后端接口** | `GET /api/order/v1/orders/{orderNo}` |
+| **后端服务** | Order Service (8084) |
+
+---
+
+#### 6.5 取消订单
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `DELETE /api/orders/{orderNo}` |
+| **后端接口** | `POST /api/order/v1/orders/{orderNo}/cancel` |
+| **后端服务** | Order Service (8084) |
+| **认证** | 需要 `Authorization: Bearer <token>` |
+
+---
+
+### 7. 支付模块 (Payment)
+
+#### 7.1 创建支付
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `POST /api/payment` |
+| **后端接口** | `POST /api/payment/v1/create` |
+| **后端服务** | Payment Service (8085) |
+
+**请求参数**:
+```json
+{
+  "orderId": "order-xxx",
+  "amount": 100.00
+}
+```
 
 **响应**:
 ```json
 {
   "code": 200,
   "data": {
-    "count": 5
+    "payForm": "<form>...</form>"
   }
 }
 ```
 
 ---
 
-### 3. 领养申请模块 (Application)
-
-#### 3.1 获取申请列表
+#### 7.2 支付回调
 | 项目 | 说明 |
 |------|------|
-| **前端调用** | `GET /api/applications` |
-| **后端接口** | `GET http://localhost:8080/api/adoption/v1/applications` |
-| **后端服务** | Adoption Service (8083) |
+| **前端调用** | `POST /api/payment/notify` |
+| **后端接口** | `POST /api/payment/v1/callback` |
+| **后端服务** | Payment Service (8085) |
+
+> **注意**: 生产环境中，支付宝直接回调后端服务
+
+---
+
+#### 7.3 查询支付状态
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `GET /api/payment/query?transactionNo=xxx` |
+| **后端接口** | `GET /api/payment/v1/status/{transactionNo}` |
+| **后端服务** | Payment Service (8085) |
+
+---
+
+### 8. 搜索模块 (Search)
+
+#### 8.1 搜索宠物
+| 项目 | 说明 |
+|------|------|
+| **前端调用** | `GET /api/search/pets` |
+| **后端接口** | `GET /api/search/v1/pets` |
+| **后端服务** | Search Service (8086) |
 
 **请求参数** (Query String):
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| my | boolean | 获取我的申请 |
-| pending | boolean | 获取待审核申请（管理员） |
-| status | string | 筛选状态 |
-| pet_id | string | 筛选宠物 |
-| user_id | string | 筛选用户 |
-| page | number | 页码 |
-| size | number | 每页数量 |
-
-**后端路由**:
-- `my=true` → `/api/adoption/v1/applications/my`
-- `pending=true` → `/api/adoption/v1/applications/pending`
-- 其他 → `/api/adoption/v1/applications`
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| keyword | string | 否 | 搜索关键词 |
+| species | string | 否 | 物种 |
+| gender | string | 否 | 性别 |
+| size | string | 否 | 体型 |
+| status | string | 否 | 状态，默认 AVAILABLE |
+| page | number | 否 | 页码，默认 1 |
+| pageSize | number | 否 | 每页数量，默认 12 |
 
 ---
 
-#### 3.2 创建领养申请
+#### 8.2 同步宠物数据到 ES
 | 项目 | 说明 |
 |------|------|
-| **前端调用** | `POST /api/applications` |
-| **后端接口** | `POST http://localhost:8080/api/adoption/v1/applications` |
-| **后端服务** | Adoption Service (8083) |
-| **认证** | 需要登录 |
+| **前端调用** | `POST /api/search/sync` |
+| **后端接口** | `POST /api/search/v1/sync` |
+| **后端服务** | Search Service (8086) |
 
-**请求参数**:
+---
+
+## 统一响应格式
+
+### 后端响应格式
 ```json
 {
-  "petId": "pet-xxx",
-  "reason": "我很喜欢这只狗狗...",
-  "livingCondition": "住在小区，有独立住房...",
-  "experience": "之前养过狗...",
-  "hasOtherPets": false,
-  "otherPetsDetail": "",
-  "livingConditionImages": ["url1", "url2"]
+  "code": 200,
+  "message": "success",
+  "data": { ... },
+  "timestamp": 1234567890
 }
 ```
 
----
-
-#### 3.3 获取申请详情
-| 项目 | 说明 |
-|------|------|
-| **前端调用** | `GET /api/applications/[id]` |
-| **后端接口** | `GET http://localhost:8080/api/adoption/v1/applications/{id}` |
-| **后端服务** | Adoption Service (8083) |
-
----
-
-#### 3.4 审核申请
-| 项目 | 说明 |
-|------|------|
-| **前端调用** | `PATCH /api/applications/[id]` |
-| **后端接口** | `PATCH http://localhost:8080/api/adoption/v1/applications/{id}/review` |
-| **后端服务** | Adoption Service (8083) |
-| **认证** | 需要管理员权限 |
-
-**请求参数**:
+### 前端响应格式
 ```json
 {
-  "status": "approved",  // approved 或 rejected
-  "adminNotes": "审核通过"
+  "success": true,
+  "message": "success",
+  "data": { ... }
 }
 ```
 
----
-
-### 4. 领养记录模块 (Adoption)
-
-#### 4.1 获取我的领养记录
-| 项目 | 说明 |
-|------|------|
-| **前端调用** | `GET /api/adoptions` |
-| **后端接口** | `GET http://localhost:8080/api/adoption/v1/adoptions/my` |
-| **后端服务** | Adoption Service (8083) |
-| **认证** | 需要登录 |
-
----
-
-### 5. 机构模块 (Institution)
-
-#### 5.1 获取机构列表
-| 项目 | 说明 |
-|------|------|
-| **前端调用** | `GET /api/institutions` |
-| **后端接口** | `GET http://localhost:8080/api/user/v1/institutions` |
-| **后端服务** | User Service (8081) |
-
----
-
-#### 5.2 获取机构详情
-| 项目 | 说明 |
-|------|------|
-| **前端调用** | `GET /api/institutions/[id]` |
-| **后端接口** | `GET http://localhost:8080/api/user/v1/institutions/{id}` |
-| **后端服务** | User Service (8081) |
-
----
-
-#### 5.3 创建机构
-| 项目 | 说明 |
-|------|------|
-| **前端调用** | `POST /api/institutions` |
-| **后端接口** | `POST http://localhost:8080/api/user/v1/institutions` |
-| **后端服务** | User Service (8081) |
-| **认证** | 需要管理员权限 |
-
----
-
-### 6. 其他模块
-
-#### 6.1 视频 API
-| 项目 | 说明 |
-|------|------|
-| **前端调用** | `GET /api/videos` |
-| **后端接口** | 待实现 |
-
-#### 6.2 捐赠 API
-| 项目 | 说明 |
-|------|------|
-| **前端调用** | `GET/POST /api/donations` |
-| **后端接口** | 待实现 |
-
-#### 6.3 聊天推荐 API
-| 项目 | 说明 |
-|------|------|
-| **前端调用** | `POST /api/chat/recommend` |
-| **后端接口** | `POST http://localhost:8080/api/pet/v1/pets` (复用宠物列表接口) |
-
-#### 6.4 支付 API
-| 项目 | 说明 |
-|------|------|
-| **前端调用** | `POST /api/payment` |
-| **说明** | 支付宝签名，无需后端 |
-
-#### 6.5 文件上传 API
-| 项目 | 说明 |
-|------|------|
-| **前端调用** | `POST /api/upload` |
-| **说明** | S3 存储，无需后端数据库 |
-
----
-
-## 后端响应格式
-
-### 统一响应结构
-```typescript
-interface ApiResponse<T> {
-  code: number;       // 200 成功，其他为错误码
-  message: string;    // 响应消息
-  data: T;            // 响应数据
-  timestamp: number;  // 时间戳
+### 错误响应
+```json
+{
+  "code": 400,
+  "message": "错误信息",
+  "data": null
 }
 ```
 
-### 分页响应结构
-```typescript
-interface PageResponse<T> {
-  records: T[];       // 数据列表
-  total: number;      // 总记录数
-  current: number;    // 当前页
-  size: number;       // 每页大小
-  pages: number;      // 总页数
-}
-```
-
-### 错误码
+### 常见错误码
 | 错误码 | 说明 |
 |--------|------|
 | 200 | 成功 |
 | 400 | 请求参数错误 |
-| 401 | 未认证 |
-| 403 | 无权限 |
+| 401 | 未授权/登录过期 |
+| 403 | 权限不足 |
 | 404 | 资源不存在 |
 | 500 | 服务器内部错误 |
 
 ---
 
-## 前端代理层代码示例
+## 接口对照表
 
-### 基本请求方法
-```typescript
-// frontend/src/app/api/pets/route.ts
-async function requestBackend<T>(
-  url: string,
-  options: RequestInit = {},
-  request: NextRequest
-): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  // 传递认证信息
-  const cookieHeader = request.headers.get("cookie") || "";
-  if (cookieHeader.includes('token=')) {
-    const match = cookieHeader.match(/token=([^;]+)/);
-    if (match) {
-      headers['Authorization'] = `Bearer ${match[1]}`;
-    }
-  }
-
-  const response = await fetch(url, { ...options, headers });
-  return response.json();
-}
-```
-
-### 调用示例
-```typescript
-// 获取宠物列表
-export async function GET(request: NextRequest) {
-  const result = await requestBackend<ApiResponse<PageResponse<Pet>>>(
-    API_ENDPOINTS.pets,
-    { method: 'GET' },
-    request
-  );
-
-  if (result.code !== 200) {
-    return NextResponse.json({ error: result.message }, { status: 400 });
-  }
-
-  return NextResponse.json({
-    success: true,
-    pets: result.data.records,
-    total: result.data.total,
-  });
-}
-```
-
----
-
-## API 端点配置
-
-**文件**: `frontend/src/lib/api-config.ts`
-
-```typescript
-export const API_ENDPOINTS = {
-  // Auth
-  sendCode: `${API_CONFIG.gateway}${API_CONFIG.services.user}/v1/auth/send-code`,
-  verifyCode: `${API_CONFIG.gateway}${API_CONFIG.services.user}/v1/auth/verify-code`,
-  
-  // User
-  userInfo: `${API_CONFIG.gateway}${API_CONFIG.services.user}/v1/users/me`,
-  updateUser: `${API_CONFIG.gateway}${API_CONFIG.services.user}/v1/users/me`,
-  
-  // Institution
-  institutions: `${API_CONFIG.gateway}${API_CONFIG.services.user}/v1/institutions`,
-  institutionById: (id: string) => 
-    `${API_CONFIG.gateway}${API_CONFIG.services.user}/v1/institutions/${id}`,
-  
-  // Pet
-  pets: `${API_CONFIG.gateway}${API_CONFIG.services.pet}/v1/pets`,
-  petById: (id: string) => 
-    `${API_CONFIG.gateway}${API_CONFIG.services.pet}/v1/pets/${id}`,
-  petStatus: (id: string) => 
-    `${API_CONFIG.gateway}${API_CONFIG.services.pet}/v1/pets/${id}/status`,
-  petApplicationCount: (petId: string) => 
-    `${API_CONFIG.gateway}${API_CONFIG.services.adoption}/v1/applications/pet/${petId}/count`,
-  
-  // Adoption
-  applications: `${API_CONFIG.gateway}${API_CONFIG.services.adoption}/v1/applications`,
-  applicationById: (id: string) => 
-    `${API_CONFIG.gateway}${API_CONFIG.services.adoption}/v1/applications/${id}`,
-  myApplications: `${API_CONFIG.gateway}${API_CONFIG.services.adoption}/v1/applications/my`,
-  pendingApplications: `${API_CONFIG.gateway}${API_CONFIG.services.adoption}/v1/applications/pending`,
-  applicationReview: (id: string) => 
-    `${API_CONFIG.gateway}${API_CONFIG.services.adoption}/v1/applications/${id}/review`,
-  myAdoptions: `${API_CONFIG.gateway}${API_CONFIG.services.adoption}/v1/adoptions/my`,
-};
-```
-
----
-
-## 服务端口汇总
-
-| 服务 | 端口 | 说明 |
-|------|------|------|
-| Frontend | 5000 | Next.js 开发服务器 |
-| Gateway | 8080 | Spring Cloud Gateway |
-| User Service | 8081 | 用户、认证、机构 |
-| Pet Service | 8082 | 宠物管理 |
-| Adoption Service | 8083 | 领养申请、记录 |
-| MySQL | 3306 | 数据库 |
-| Redis | 6379 | 缓存、会话 |
+| 前端路由 | 后端接口 | HTTP方法 |
+|---------|---------|---------|
+| `/api/auth/send-code` | `/api/user/v1/auth/send-code` | POST |
+| `/api/auth/verify-code` | `/api/user/v1/auth/verify-code` | POST |
+| `/api/auth/me` | `/api/user/v1/auth/me` | GET |
+| `/api/auth/me` | `/api/user/v1/auth/update/me` | POST |
+| `/api/institutions` | `/api/user/v1/institutions` | GET/POST |
+| `/api/institutions/{id}` | `/api/user/v1/institutions/{id}` | GET/PUT |
+| `/api/pets` | `/api/pet/v1/pets` | GET/POST |
+| `/api/pets/{id}` | `/api/pet/v1/pets/{id}` | GET |
+| `/api/pets/{id}` | `/api/pet/v1/pets/update/{id}` | PUT |
+| `/api/pets/{id}` | `/api/pet/v1/pets/delete/{id}` | DELETE |
+| `/api/pets/{id}/applications-count` | `/api/pet/v1/pets/{id}/application-count` | GET |
+| `/api/applications` | `/api/adoption/v1/applications` | GET/POST |
+| `/api/applications?my=true` | `/api/adoption/v1/applications/my` | GET |
+| `/api/applications/{id}` | `/api/adoption/v1/applications/{id}` | GET |
+| `/api/applications/{id}` | `/api/adoption/v1/applications/{id}/review` | PATCH |
+| `/api/orders` | `/api/order/v1/orders` | GET/POST |
+| `/api/orders/{orderNo}` | `/api/order/v1/orders/{orderNo}` | GET |
+| `/api/orders/{orderNo}` | `/api/order/v1/orders/{orderNo}/cancel` | DELETE |
+| `/api/payment` | `/api/payment/v1/create` | POST |
+| `/api/payment/query` | `/api/payment/v1/status/{transactionNo}` | GET |

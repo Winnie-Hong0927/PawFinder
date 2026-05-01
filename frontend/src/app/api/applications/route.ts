@@ -13,12 +13,6 @@ async function requestBackend<T>(
     'Content-Type': 'application/json',
   };
 
-  // 传递用户认证信息
-  const userId = request.headers.get("x-user-id");
-  const userRole = request.headers.get("x-user-role");
-  if (userId) headers['X-User-Id'] = userId;
-  if (userRole) headers['X-User-Role'] = userRole;
-
   // 如果前端有token，也传递
   const cookieHeader = request.headers.get("cookie") || "";
   if (cookieHeader.includes('token=')) {
@@ -38,46 +32,46 @@ async function requestBackend<T>(
 
 /**
  * GET /api/applications - 获取申请列表
- * 前端代理层，转发到后端领养服务
+ * 前端代理层，转发到后端领养服务 GET /api/adoption/v1/applications
+ * 
+ * 后端参数: page, size, status, petId, userId
+ * 我的申请: GET /api/adoption/v1/applications/my
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
-    const pet_id = searchParams.get("pet_id");
-    const user_id = searchParams.get("user_id");
+    const petId = searchParams.get("pet_id");
+    const userId = searchParams.get("user_id");
     const my = searchParams.get("my");
-    const pending = searchParams.get("pending");
+    const page = searchParams.get("page") || "1";
+    const size = searchParams.get("size") || "10";
     
     let backendUrl: string;
     
     // 我的申请
     if (my === 'true') {
-      backendUrl = API_ENDPOINTS.myApplications;
-    }
-    // 待审核申请（管理员）
-    else if (pending === 'true') {
       const params = new URLSearchParams();
-      if (status) params.set('status', status);
-      const page = searchParams.get("page") || "1";
-      const size = searchParams.get("size") || "20";
-      params.set('current', page);
+      params.set('page', page);
       params.set('size', size);
-      backendUrl = `${API_ENDPOINTS.pendingApplications}?${params.toString()}`;
+      if (status) params.set('status', status);
+      backendUrl = `${API_ENDPOINTS.myApplications}?${params.toString()}`;
     }
-    // 通用查询
+    // 通用查询（管理员）
     else {
       const params = new URLSearchParams();
+      params.set('page', page);
+      params.set('size', size);
       if (status) params.set('status', status);
-      if (pet_id) params.set('petId', pet_id);
-      if (user_id) params.set('userId', user_id);
-      backendUrl = `${API_ENDPOINTS.applications}${params.toString() ? '?' + params.toString() : ''}`;
+      if (petId) params.set('petId', petId);
+      if (userId) params.set('userId', userId);
+      backendUrl = `${API_ENDPOINTS.applications}?${params.toString()}`;
     }
 
     const result = await requestBackend<{
       code: number;
       message: string;
-      data: any[] | { records: any[]; total: number; current: number; size: number };
+      data: { records: any[]; total: number; current: number; size: number };
     }>(backendUrl, { method: 'GET' }, request);
 
     // 后端返回格式: { code: 200, message: 'success', data: {...} }
@@ -88,20 +82,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 处理分页响应
-    if (pending === 'true' && result.data && typeof result.data === 'object' && 'records' in result.data) {
-      return NextResponse.json({
-        success: true,
-        applications: result.data.records,
-        total: result.data.total,
-        page: result.data.current,
-        size: result.data.size,
-      });
-    }
-
     return NextResponse.json({
       success: true,
-      applications: Array.isArray(result.data) ? result.data : [],
+      applications: result.data.records,
+      total: result.data.total,
+      page: result.data.current,
+      size: result.data.size,
     });
   } catch (error: any) {
     console.error("Get applications proxy error:", error);
@@ -114,26 +100,18 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/applications - 创建申请
- * 前端代理层，转发到后端领养服务
+ * 前端代理层，转发到后端领养服务 POST /api/adoption/v1/applications
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { pet_id, reason, living_condition, living_condition_images, experience, has_other_pets, other_pets_detail, documents } = body;
 
-    const userId = request.headers.get("x-user-id");
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "用户未登录或登录已过期，请重新登录" },
-        { status: 401 }
-      );
-    }
-
     // 调用后端创建申请
     const result = await requestBackend<{
       code: number;
       message: string;
-      data: string;
+      data: any;
     }>(API_ENDPOINTS.applications, {
       method: 'POST',
       body: JSON.stringify({
@@ -148,22 +126,22 @@ export async function POST(request: NextRequest) {
       }),
     }, request);
 
-    // 后端返回格式: { code: 200, message: 'success', data: 'applicationId' }
     if (result.code !== 200) {
       return NextResponse.json(
-        { success: false, error: result.message || '创建申请失败' },
+        { success: false, error: result.message || '提交申请失败' },
         { status: 400 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      applicationId: result.data,
+      message: result.message || '申请提交成功',
+      application: result.data,
     });
   } catch (error: any) {
     console.error("Create application proxy error:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "创建申请失败" },
+      { success: false, error: error.message || "提交申请失败" },
       { status: 500 }
     );
   }

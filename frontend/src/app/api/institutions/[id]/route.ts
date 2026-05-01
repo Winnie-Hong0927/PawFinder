@@ -13,12 +13,6 @@ async function requestBackend<T>(
     'Content-Type': 'application/json',
   };
 
-  // 传递用户认证信息
-  const userId = request.headers.get("x-user-id");
-  const userRole = request.headers.get("x-user-role");
-  if (userId) headers['X-User-Id'] = userId;
-  if (userRole) headers['X-User-Role'] = userRole;
-
   // 如果前端有token，也传递
   const cookieHeader = request.headers.get("cookie") || "";
   if (cookieHeader.includes('token=')) {
@@ -38,7 +32,7 @@ async function requestBackend<T>(
 
 /**
  * GET /api/institutions/[id] - 获取机构详情
- * 前端代理层，转发到后端用户服务
+ * 前端代理层，转发到后端用户服务 GET /api/user/v1/institutions/{id}
  */
 export async function GET(
   request: NextRequest,
@@ -75,24 +69,16 @@ export async function GET(
 }
 
 /**
- * PATCH /api/institutions/[id] - 更新机构
- * 前端代理层，转发到后端用户服务
+ * PUT /api/institutions/[id] - 更新机构
+ * 前端代理层，转发到后端用户服务 PUT /api/user/v1/institutions/{id}
  */
-export async function PATCH(
+export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
     const body = await request.json();
-
-    const userId = request.headers.get("x-user-id");
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
 
     const result = await requestBackend<{
       code: number;
@@ -103,7 +89,6 @@ export async function PATCH(
       body: JSON.stringify(body),
     }, request);
 
-    // 后端返回格式: { code: 200, message: 'success', data: {...} }
     if (result.code !== 200) {
       return NextResponse.json(
         { success: false, error: result.message || '更新机构失败' },
@@ -113,6 +98,7 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
+      message: result.message || '更新成功',
       institution: result.data,
     });
   } catch (error: any) {
@@ -125,47 +111,12 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/institutions/[id] - 删除机构
- * 前端代理层，转发到后端用户服务
+ * PATCH /api/institutions/[id] - 更新机构
+ * 兼容前端旧的调用方式
  */
-export async function DELETE(
+export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params;
-
-    const userId = request.headers.get("x-user-id");
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    const result = await requestBackend<{
-      code: number;
-      message: string;
-    }>(API_ENDPOINTS.institutionById(id), {
-      method: 'DELETE',
-    }, request);
-
-    // 后端返回格式: { code: 200, message: 'success' }
-    if (result.code !== 200) {
-      return NextResponse.json(
-        { success: false, error: result.message || '删除机构失败' },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-    });
-  } catch (error: any) {
-    console.error("Delete institution proxy error:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "删除机构失败" },
-      { status: 500 }
-    );
-  }
+  return PUT(request, { params });
 }

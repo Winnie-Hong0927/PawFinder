@@ -1,89 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
-import AlipaySdk from 'alipay-sdk';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
-// 初始化支付宝SDK
-const alipay = new AlipaySdk({
-  appId: process.env.ALIPAY_APP_ID || '2021000000000000',
-  privateKey: process.env.ALIPAY_PRIVATE_KEY || '',
-  alipayPublicKey: process.env.ALIPAY_PUBLIC_KEY || '',
-  gateway: process.env.ALIPAY_GATEWAY || 'https://openapi-sandbox.dl.alipaydev.com/gateway.do',
-  signType: 'RSA2',
-});
-
-// 支付异步回调通知
+/**
+ * POST /api/payment/notify - 支付回调
+ * 前端代理层，转发到后端支付服务 POST /api/payment/v1/callback
+ * 
+ * 注意：实际生产环境中，支付宝直接回调后端服务，不经过前端代理
+ */
 export async function POST(request: NextRequest) {
   try {
-    // 获取POST请求体
-    const body = await request.formData();
+    // 获取表单数据
+    const formData = await request.formData();
     const params: Record<string, string> = {};
     
-    body.forEach((value, key) => {
+    formData.forEach((value, key) => {
       params[key] = value.toString();
     });
 
     console.log('收到支付宝回调:', params);
 
-    // 验签
-    const signResult = await alipay.checkNotifySign(params);
+    // 转发到后端支付服务
+    const formBody = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      formBody.append(key, value);
+    });
+
+    const response = await fetch(API_ENDPOINTS.paymentCallback, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formBody.toString(),
+    });
+
+    const result = await response.text();
     
-    if (!signResult) {
-      console.error('验签失败');
-      return NextResponse.text('fail');
-    }
-
-    // 获取交易状态
-    const tradeStatus = params.trade_status;
-    const outTradeNo = params.out_trade_no;
-    const tradeNo = params.trade_no;
-    const totalAmount = params.total_amount;
-    const businessParams = params.business_params;
-
-    console.log(`交易状态: ${tradeStatus}, 商户订单号: ${outTradeNo}`);
-
-    // 解析业务扩展参数
-    let businessData = {
-      type: '',
-      petId: '',
-      userId: '',
-    };
-    
-    try {
-      if (businessParams) {
-        businessData = JSON.parse(businessParams);
-      }
-    } catch (e) {
-      console.error('解析业务参数失败:', e);
-    }
-
-    // 根据交易状态处理
-    if (tradeStatus === 'TRADE_SUCCESS' || tradeStatus === 'TRADE_FINISHED') {
-      // 支付成功
-      // 这里可以更新数据库中的订单状态
-      // 根据 type 判断是领养费用还是捐赠
-      // 如果是领养费用，还需要更新领养申请状态
-      
-      console.log(`支付成功 - 类型: ${businessData.type}, 金额: ${totalAmount}`);
-      
-      // TODO: 更新数据库
-      // 1. 创建支付记录
-      // 2. 如果是领养费用，更新领养申请状态为已支付
-      // 3. 如果是捐赠，创建捐赠记录
-
-      return NextResponse.text('success');
-    }
-
-    return NextResponse.text('fail');
-
-  } catch (error) {
-    console.error('处理回调失败:', error);
-    return NextResponse.text('fail');
+    return new NextResponse(result, {
+      headers: { 'Content-Type': 'text/plain' },
+    });
+  } catch (error: any) {
+    console.error("Payment notify proxy error:", error);
+    return new NextResponse('fail', {
+      headers: { 'Content-Type': 'text/plain' },
+    });
   }
-}
-
-// 允许GET请求用于验证
-export async function GET(request: NextRequest) {
-  return NextResponse.json({
-    message: '支付回调验证端点',
-    status: 'ok',
-  });
 }

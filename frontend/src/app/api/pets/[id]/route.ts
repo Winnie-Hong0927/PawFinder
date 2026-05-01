@@ -13,12 +13,6 @@ async function requestBackend<T>(
     'Content-Type': 'application/json',
   };
 
-  // 传递用户认证信息
-  const userId = request.headers.get("x-user-id");
-  const userRole = request.headers.get("x-user-role");
-  if (userId) headers['X-User-Id'] = userId;
-  if (userRole) headers['X-User-Role'] = userRole;
-
   // 如果前端有token，也传递
   const cookieHeader = request.headers.get("cookie") || "";
   if (cookieHeader.includes('token=')) {
@@ -38,7 +32,7 @@ async function requestBackend<T>(
 
 /**
  * GET /api/pets/[id] - 获取宠物详情
- * 前端代理层，转发到后端宠物服务
+ * 前端代理层，转发到后端宠物服务 GET /api/pet/v1/pets/{id}
  */
 export async function GET(
   request: NextRequest,
@@ -84,34 +78,28 @@ export async function GET(
 
 /**
  * PUT /api/pets/[id] - 更新宠物
- * 前端代理层，转发到后端宠物服务
+ * 前端代理层，转发到后端宠物服务 POST /api/pet/v1/pets/update/{id}
+ * 
+ * 注意：后端更新接口是 POST 而不是 PUT
  */
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = request.headers.get("x-user-id");
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     const { id } = await params;
     const body = await request.json();
     
     const result = await requestBackend<{
       code: number;
       message: string;
-    }>(API_ENDPOINTS.petById(id), {
-      method: 'PUT',
+      data: any;
+    }>(API_ENDPOINTS.updatePet(id), {
+      method: 'POST',
       body: JSON.stringify(body),
     }, request);
 
-    // 后端返回格式: { code: 200, message: 'success' }
+    // 后端返回格式: { code: 200, message: 'success', data: {...} }
     if (result.code !== 200) {
       return NextResponse.json(
         { error: result.message || '更新宠物失败' },
@@ -121,6 +109,8 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
+      message: result.message || '更新成功',
+      pet: result.data,
     });
   } catch (error) {
     console.error("Update pet proxy error:", error);
@@ -133,29 +123,22 @@ export async function PUT(
 
 /**
  * DELETE /api/pets/[id] - 删除宠物
- * 前端代理层，转发到后端宠物服务
+ * 前端代理层，转发到后端宠物服务 POST /api/pet/v1/pets/delete/{id}
+ * 
+ * 注意：后端删除接口是 POST 而不是 DELETE
  */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = request.headers.get("x-user-id");
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     const { id } = await params;
     
     const result = await requestBackend<{
       code: number;
       message: string;
-    }>(API_ENDPOINTS.petById(id), {
-      method: 'DELETE',
+    }>(API_ENDPOINTS.deletePet(id), {
+      method: 'POST',
     }, request);
 
     // 后端返回格式: { code: 200, message: 'success' }
@@ -168,9 +151,58 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
+      message: result.message || '删除成功',
     });
   } catch (error) {
     console.error("Delete pet proxy error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/pets/[id] - 更新宠物状态
+ * 前端代理层，转发到后端宠物服务 POST /api/pet/v1/pets/status/{id}
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    
+    // 如果是状态更新
+    if (body.status) {
+      const result = await requestBackend<{
+        code: number;
+        message: string;
+      }>(API_ENDPOINTS.updatePetStatus(id), {
+        method: 'POST',
+        body: JSON.stringify({ status: body.status }),
+      }, request);
+
+      if (result.code !== 200) {
+        return NextResponse.json(
+          { error: result.message || '更新状态失败' },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: result.message || '状态更新成功',
+      });
+    }
+
+    return NextResponse.json(
+      { error: "Invalid request" },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error("Update pet status proxy error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

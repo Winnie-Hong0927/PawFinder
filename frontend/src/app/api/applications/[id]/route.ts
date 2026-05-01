@@ -13,12 +13,6 @@ async function requestBackend<T>(
     'Content-Type': 'application/json',
   };
 
-  // 传递用户认证信息
-  const userId = request.headers.get("x-user-id");
-  const userRole = request.headers.get("x-user-role");
-  if (userId) headers['X-User-Id'] = userId;
-  if (userRole) headers['X-User-Role'] = userRole;
-
   // 如果前端有token，也传递
   const cookieHeader = request.headers.get("cookie") || "";
   if (cookieHeader.includes('token=')) {
@@ -38,7 +32,7 @@ async function requestBackend<T>(
 
 /**
  * GET /api/applications/[id] - 获取申请详情
- * 前端代理层，转发到后端领养服务
+ * 前端代理层，转发到后端领养服务 GET /api/adoption/v1/applications/{id}
  */
 export async function GET(
   request: NextRequest,
@@ -75,8 +69,81 @@ export async function GET(
 }
 
 /**
- * PATCH /api/applications/[id] - 更新申请状态（审核）
+ * POST /api/applications/[id] - 审核申请 / 取消申请
  * 前端代理层，转发到后端领养服务
+ * 
+ * 审核: POST /api/adoption/v1/applications/{id}/review
+ * 取消: POST /api/adoption/v1/applications/cancel/{id}
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    
+    // 取消申请
+    if (body.action === 'cancel') {
+      const result = await requestBackend<{
+        code: number;
+        message: string;
+      }>(API_ENDPOINTS.cancelApplication(id), {
+        method: 'POST',
+      }, request);
+
+      if (result.code !== 200) {
+        return NextResponse.json(
+          { success: false, error: result.message || '取消申请失败' },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: result.message || '申请已取消',
+      });
+    }
+    
+    // 审核申请
+    const { status, admin_notes } = body;
+    
+    const result = await requestBackend<{
+      code: number;
+      message: string;
+      data: any;
+    }>(API_ENDPOINTS.reviewApplication(id), {
+      method: 'POST',
+      body: JSON.stringify({
+        status,
+        adminNotes: admin_notes,
+      }),
+    }, request);
+
+    if (result.code !== 200) {
+      return NextResponse.json(
+        { success: false, error: result.message || '审核失败' },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: result.message || '审核成功',
+      application: result.data,
+    });
+  } catch (error: any) {
+    console.error("Review application proxy error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "操作失败" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH /api/applications/[id] - 审核申请
+ * 兼容前端旧的调用方式
  */
 export async function PATCH(
   request: NextRequest,
@@ -87,40 +154,35 @@ export async function PATCH(
     const body = await request.json();
     const { status, admin_notes } = body;
 
-    const userId = request.headers.get("x-user-id");
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     // 调用后端审核API
     const result = await requestBackend<{
       code: number;
       message: string;
       data: any;
-    }>(API_ENDPOINTS.applicationReview(id), {
-      method: 'PUT',
-      body: JSON.stringify({ status, adminNotes: admin_notes }),
+    }>(API_ENDPOINTS.reviewApplication(id), {
+      method: 'POST',
+      body: JSON.stringify({
+        status,
+        adminNotes: admin_notes,
+      }),
     }, request);
 
-    // 后端返回格式: { code: 200, message: 'success', data: {...} }
     if (result.code !== 200) {
       return NextResponse.json(
-        { success: false, error: result.message || '更新申请失败' },
+        { success: false, error: result.message || '审核失败' },
         { status: 400 }
       );
     }
 
     return NextResponse.json({
       success: true,
+      message: result.message || '审核成功',
       application: result.data,
     });
   } catch (error: any) {
-    console.error("Update application proxy error:", error);
+    console.error("Review application proxy error:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "更新申请失败" },
+      { success: false, error: error.message || "审核失败" },
       { status: 500 }
     );
   }

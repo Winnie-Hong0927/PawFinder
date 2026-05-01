@@ -3,7 +3,7 @@ import { API_ENDPOINTS } from '@/lib/api-config';
 
 /**
  * 验证码登录 - 前端代理层
- * 仅将请求转发到后端用户服务
+ * POST /api/auth/verify-code -> POST /api/user/v1/auth/verify-code
  */
 export async function POST(request: Request) {
   try {
@@ -41,14 +41,14 @@ export async function POST(request: Request) {
     // 构建前端响应
     const nextResponse = NextResponse.json({
       success: true,
-      message: '登录成功',
+      message: result.message || '登录成功',
       user: {
         id: userId,
         phone: user?.phone,
         name: user?.name,
         role: user?.role,
-        avatar_url: user?.avatar_url,
-        institution_id: user?.institution_id,
+        avatar_url: user?.avatarUrl,
+        institution_id: user?.institutionId,
       }
     });
     

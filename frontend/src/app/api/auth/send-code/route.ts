@@ -3,7 +3,7 @@ import { API_ENDPOINTS } from '@/lib/api-config';
 
 /**
  * 发送验证码 - 前端代理层
- * 仅将请求转发到后端用户服务
+ * POST /api/auth/send-code -> POST /api/user/v1/auth/send-code
  */
 export async function POST(request: NextRequest) {
   try {
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ phone, type: type || 'login' }),
+      body: JSON.stringify({ phone }),
     });
     
     const result = await response.json();
