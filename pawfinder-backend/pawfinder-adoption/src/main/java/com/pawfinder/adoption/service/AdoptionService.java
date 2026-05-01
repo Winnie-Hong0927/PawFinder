@@ -171,6 +171,7 @@ public class AdoptionService {
         Result<ApplicationVO> result = toVO(application);
         if (result.getCode() == ErrorCode.SUCCESS.getCode()) {
             applicationMapper.insert(application);
+            petClient.updateApplicationCount(application.getPetId(), 1);
             log.info("Adoption application created: {} by user {}", application.getId(), userId);
         }
         return result;
@@ -256,6 +257,7 @@ public class AdoptionService {
 
         application.setStatus(AdoptionStatusEnum.CANCELED);
         applicationMapper.updateById(application);
+        petClient.updateApplicationCount(application.getPetId(), -1);
         log.info("Application {} canceled by user {}", applicationId, userId);
         return Result.success();
     }

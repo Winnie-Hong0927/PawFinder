@@ -82,7 +82,12 @@ public class PetController {
     @Operation(summary = "获取宠物申请人数")
     @GetMapping("/{id}/application-count")
     public Result<Long> getApplicationCount(@PathVariable String id) {
-        Long count = petService.getApplicationCount(id);
-        return Result.success(count);
+        return petService.getApplicationCount(id);
+    }
+
+    @Operation(summary = "更新宠物申请人数")
+    @PostMapping("/update/count")
+    public Result<Void> updateApplicationCount(@RequestParam String id, @RequestParam Integer count) {
+        return petService.updateApplicationCount(id, count);
     }
 }

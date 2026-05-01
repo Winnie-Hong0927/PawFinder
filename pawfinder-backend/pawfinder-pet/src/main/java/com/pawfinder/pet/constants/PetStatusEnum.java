@@ -10,10 +10,10 @@ import java.util.Map;
  * 用于表示系统中宠物可能的状态
  */
 public enum PetStatusEnum {
-    AVAILABLE("available"),
-    ADOPTED("adopted"),
-    UNAVAILABLE("unavailable"),
-    DELETED("deleted");
+    AVAILABLE("AVAILABLE"),
+    ADOPTED("ADOPTED"),
+    UNAVAILABLE("UNAVAILABLE"),
+    DELETED("DELETED");
 
     @Getter
     private final String value;
@@ -31,9 +31,9 @@ public enum PetStatusEnum {
     }
 
     public static PetStatusEnum fromValue(String value) {
-        if (value == null || !VALUE_MAP.containsKey(value.toLowerCase())) {
+        if (value == null || !VALUE_MAP.containsKey(value.toUpperCase())) {
             throw new IllegalArgumentException("未知的状态值: " + value);
         }
-        return VALUE_MAP.get(value.toLowerCase());
+        return VALUE_MAP.get(value.toUpperCase());
     }
 }

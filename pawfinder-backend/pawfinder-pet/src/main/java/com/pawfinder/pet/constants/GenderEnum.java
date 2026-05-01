@@ -7,8 +7,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum GenderEnum {
-    FEMALE("female"),
-    MALE("male");
+    FEMALE("FEMALE"),
+    MALE("MALE");
 
     @Getter
     private final String value;
@@ -36,7 +36,7 @@ public enum GenderEnum {
         if (value == null) {
             throw new IllegalArgumentException("GenderEnum value 不能为 null");
         }
-        GenderEnum gender = VALUE_MAP.get(value.toLowerCase());
+        GenderEnum gender = VALUE_MAP.get(value.toUpperCase());
         if (gender == null) {
             throw new IllegalArgumentException("未知的性别值: " + value);
         }

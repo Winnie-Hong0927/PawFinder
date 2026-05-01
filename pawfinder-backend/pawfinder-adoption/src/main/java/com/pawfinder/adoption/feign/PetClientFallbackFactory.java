@@ -33,6 +33,12 @@ public class PetClientFallbackFactory implements FallbackFactory<PetClient> {
                 log.error("Feign调用 pet-service.getApplicationCount 失败, petId: {}, error: {}", id, cause.getMessage());
                 return Result.fail(ErrorCode.FALLBACK_ERROR, "调用宠物服务失败");
             }
+
+            @Override
+            public Result<Void> updateApplicationCount(String id, Integer count) {
+                log.error("Feign调用 pet-service.updateApplicationCount 失败, petId: {}, error: {}", id, cause.getMessage());
+                return Result.fail(ErrorCode.FALLBACK_ERROR, "调用宠物服务失败");
+            }
         };
     }
 }

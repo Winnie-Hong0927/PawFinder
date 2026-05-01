@@ -4,10 +4,7 @@ import com.pawfinder.adoption.feign.dto.PetDTO;
 import com.pawfinder.common.result.Result;
 import com.pawfinder.pet.dto.PetVO;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
@@ -34,5 +31,8 @@ public interface PetClient {
      * 获取宠物申请人数
      */
     @GetMapping("/api/pet/v1/pets/{id}/application-count")
-    Result<Long> getApplicationCount(@PathVariable("id") String id);
+    Result<Long> getApplicationCount(@PathVariable String id);
+
+    @PostMapping("/api/pet/v1/pets/update/count")
+    Result<Void> updateApplicationCount(@RequestParam String id, @RequestParam Integer count);
 }

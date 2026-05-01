@@ -1,3 +1,6 @@
+server:
+  port: 8083
+
 spring:
   application:
     name: adopt-service
@@ -18,7 +21,10 @@ spring:
     import:
       # 使用optional:前缀，即使Nacos配置缺失，应用也能启动
       - optional:nacos:${spring.application.name}.${spring.cloud.nacos.config.file-extension:yaml}
-
+  elasticsearch:
+    uris: http://localhost:9200
+    username: elastic
+    password: 123456
 seata:
   enabled: true
   application-id: ${spring.application.name}

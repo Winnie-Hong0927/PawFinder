@@ -11,12 +11,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum PetSpeciesEnum {
-    DOG("dog"),
-    CAT("cat"),
-    RABBIT("rabbit"),
-    BIRD("bird"),
-    HAMSTER("hamster"),
-    OTHER("other");
+    DOG("DOG"),
+    CAT("CAT"),
+    RABBIT("RABBIT"),
+    BIRD("BIRD"),
+    HAMSTER("HAMSTER"),
+    OTHER("OTHER");
 
     @Getter
     private final String value;
@@ -44,7 +44,7 @@ public enum PetSpeciesEnum {
         if (value == null) {
             throw new IllegalArgumentException("PetSpeciesEnum value 不能为 null");
         }
-        PetSpeciesEnum species = VALUE_MAP.get(value.toLowerCase());
+        PetSpeciesEnum species = VALUE_MAP.get(value.toUpperCase());
         if (species == null) {
             throw new IllegalArgumentException("未知的宠物物种值: " + value);
         }

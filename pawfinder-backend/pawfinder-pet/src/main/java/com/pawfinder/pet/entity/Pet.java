@@ -107,6 +107,11 @@ public class Pet {
     private String createdBy;
 
     /**
+     * 申请领养的次数
+     */
+    private Long applicationCount;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createdAt;
@@ -115,10 +120,4 @@ public class Pet {
      * 更新时间
      */
     private LocalDateTime updatedAt;
-
-    /**
-     * 逻辑删除时间，NULL表示未删除；非NULL表示已删除
-     * todo 待删除 还要记得修改数据库
-     */
-    private LocalDateTime deletedAt;
 }

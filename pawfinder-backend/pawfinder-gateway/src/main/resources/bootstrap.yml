@@ -4,11 +4,11 @@ server:
 spring:
   application:
     name: gateway-service
-  
+
   # 允许 Bean 覆盖，解决 Sentinel 冲突
   main:
     allow-bean-definition-overriding: true
-  
+
   cloud:
     nacos:
       discovery:
@@ -23,13 +23,13 @@ spring:
       enabled: false
       filter:
         enabled: false
-    
+
     # Gateway 路由配置 - 直连模式
     gateway:
       discovery:
         locator:
           enabled: false
-      
+
       routes:
         # User Service - 直连 8081
         - id: user-service
@@ -69,7 +69,7 @@ spring:
 
   config:
     import:
-    # 使用optional:前缀，即使Nacos配置缺失，应用也能启动
+      # 使用optional:前缀，即使Nacos配置缺失，应用也能启动
       - optional:nacos:${spring.application.name}.${spring.cloud.nacos.config.file-extension:yaml}
 
 # 日志级别

@@ -23,12 +23,12 @@ interface Pet {
 
 const speciesOptions = [
   { value: "", label: "所有种类" },
-  { value: "dog", label: "🐕 狗狗" },
-  { value: "cat", label: "🐱 猫咪" },
-  { value: "rabbit", label: "🐰 兔子" },
-  { value: "bird", label: "🐦 鸟类" },
-  { value: "hamster", label: "🐹 仓鼠" },
-  { value: "other", label: "🐾 其他" },
+  { value: "DOG", label: "🐕 狗狗" },
+  { value: "CAT", label: "🐱 猫咪" },
+  { value: "RABBIT", label: "🐰 兔子" },
+  { value: "BIRD", label: "🐦 鸟类" },
+  { value: "HAMSTER", label: "🐹 仓鼠" },
+  { value: "OTHER", label: "🐾 其他" },
 ];
 
 const sizeOptions = [
@@ -61,7 +61,7 @@ export default function PetsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams({
-        status: "available",
+        status: "AVAILABLE",
         page: "1",
         limit: "12",
       });

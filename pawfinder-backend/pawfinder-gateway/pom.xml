@@ -15,6 +15,10 @@
     <description>API Gateway Service with Sentinel Rate Limiting</description>
 
     <dependencies>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-bootstrap</artifactId>
+        </dependency>
         <!-- Common (exclude web for gateway) -->
         <dependency>
             <groupId>com.pawfinder</groupId>

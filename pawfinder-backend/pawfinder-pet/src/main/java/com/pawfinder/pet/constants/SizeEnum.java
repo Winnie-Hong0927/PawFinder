@@ -11,9 +11,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum SizeEnum {
-    SMALL("small"),
-    MEDIUM("medium"),
-    LARGE("large");
+    SMALL("SMALL"),
+    MEDIUM("MEDIUM"),
+    LARGE("LARGE");
 
     @Getter
     private final String value;
@@ -41,7 +41,7 @@ public enum SizeEnum {
         if (value == null) {
             throw new IllegalArgumentException("SizeEnum value 不能为 null");
         }
-        SizeEnum size = VALUE_MAP.get(value.toLowerCase());
+        SizeEnum size = VALUE_MAP.get(value.toUpperCase());
         if (size == null) {
             throw new IllegalArgumentException("未知的身材尺寸值: " + value);
         }

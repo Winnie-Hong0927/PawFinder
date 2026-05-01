@@ -1,6 +1,8 @@
 package com.pawfinder.adoption;
 
+import jakarta.annotation.PostConstruct;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.groovy.template.GroovyTemplateAutoConfiguration;
@@ -16,7 +18,6 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @EnableFeignClients(basePackages = "com.pawfinder.adoption.feign")
 @EnableAsync
 public class AdoptionApplication {
-
     public static void main(String[] args) {
         SpringApplication.run(AdoptionApplication.class, args);
     }

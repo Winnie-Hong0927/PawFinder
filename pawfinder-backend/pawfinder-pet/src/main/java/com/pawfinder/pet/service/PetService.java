@@ -258,20 +258,23 @@ public class PetService {
     /**
      * Get application count for a pet
      */
-    public Long getApplicationCount(String petId) {
-        //todo 不应该从缓存中拿数据
-        String cachedCount = redisTemplate.opsForValue().get(APPLICATION_COUNT_PREFIX + petId);
-        if (cachedCount != null) {
-            return Long.parseLong(cachedCount);
+    public Result<Long> getApplicationCount(String petId) {
+        Pet pet = petMapper.selectById(petId);
+        if (pet == null) {
+            return Result.fail(ErrorCode.PET_NOT_FOUND, ErrorCode.PET_NOT_FOUND.getMessage());
         }
-        return 0L;
+        return Result.success(pet.getApplicationCount());
     }
 
-    /**
-     * Set application count (called by adoption service)
-     */
-    public void setApplicationCount(String petId, Long count) {
-        redisTemplate.opsForValue().set(APPLICATION_COUNT_PREFIX + petId, String.valueOf(count), 30, TimeUnit.MINUTES);
+
+    public Result<Void> updateApplicationCount(String id, Integer count) {
+        Pet pet = petMapper.selectById(id);
+        if (pet == null) {
+            return Result.fail(ErrorCode.PET_NOT_FOUND, ErrorCode.PET_NOT_FOUND.getMessage());
+        }
+        pet.setApplicationCount(pet.getApplicationCount() + count);
+        petMapper.updateById(pet);
+        return Result.success();
     }
 
     private PetVO toVO(Pet pet) {
@@ -325,11 +328,7 @@ public class PetService {
         vo.setStatus(PetStatusEnum.fromValue(pet.getStatus()));
         vo.setInstitutionId(pet.getInstitutionId());
         vo.setCreatedAt(pet.getCreatedAt());
-
-        // TODO 获取某个宠物被领养的数量（需要有一个领养表查询）
-//        Long applicationCount = getApplicationCount(pet.getId());
-//        vo.setApplicationCount(applicationCount);
-
+        vo.setApplicationCount(pet.getApplicationCount());
         return vo;
     }
 }
