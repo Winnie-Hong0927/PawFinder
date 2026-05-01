@@ -55,24 +55,32 @@ interface Pet {
 }
 
 const speciesLabels: Record<string, string> = {
-  dog: "🐕",
-  cat: "🐱",
-  rabbit: "🐰",
-  bird: "🐦",
-  hamster: "🐹",
-  other: "🐾",
+  DOG: "🐕",
+  CAT: "🐱",
+  RABBIT: "🐰",
+  BIRD: "🐦",
+  HAMSTER: "🐹",
+  OTHER: "🐾",
 };
 
 const genderLabels: Record<string, string> = {
-  male: "公",
-  female: "母",
-  unknown: "未知",
+  MALE: "公",
+  FEMALE: "母",
+  UNKNOWN: "未知",
 };
 
 const sizeLabels: Record<string, string> = {
-  small: "小型",
-  medium: "中型",
-  large: "大型",
+  SMALL: "小型",
+  MEDIUM: "中型",
+  LARGE: "大型",
+};
+
+// 后端状态枚举值（大写）
+const statusConfig: Record<string, { color: string; label: string }> = {
+  AVAILABLE: { color: "bg-emerald-500", label: "可领养" },
+  ADOPTED: { color: "bg-gray-400", label: "已领养" },
+  UNAVAILABLE: { color: "bg-amber-500", label: "暂不可领养" },
+  PENDING: { color: "bg-amber-500", label: "待审核" },
 };
 
 export default function PetDetailPage() {
@@ -336,10 +344,13 @@ export default function PetDetailPage() {
   }
 
   const images = pet.images?.length > 0 ? pet.images : ["/placeholder-pet.jpg"];
-  const statusColor =
-    pet.status === "available" ? "bg-emerald-500" : pet.status === "pending" ? "bg-amber-500" : "bg-gray-400";
-  const statusLabel =
-    pet.status === "available" ? "可领养" : pet.status === "pending" ? "待审核" : "已领养";
+  
+  // 使用大写状态值匹配，兼容大小写
+  const upperStatus = pet.status?.toUpperCase() || "";
+  const statusInfo = statusConfig[upperStatus] || statusConfig.UNAVAILABLE;
+  const statusColor = statusInfo.color;
+  const statusLabel = statusInfo.label;
+  const isAvailable = upperStatus === "AVAILABLE";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -412,7 +423,7 @@ export default function PetDetailPage() {
               <div>
                 <h1 className="text-xl font-bold text-gray-800 leading-tight">{pet.name}</h1>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  {speciesLabels[pet.species]}
+                  {speciesLabels[pet.species?.toUpperCase()] || pet.species}
                   {pet.breed || "混血"} · {pet.age}
                 </p>
                 {(pet as any).institution_name && (
@@ -430,10 +441,10 @@ export default function PetDetailPage() {
             {/* Quick tags */}
             <div className="flex flex-wrap gap-1.5 mb-2">
               <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
-                {genderLabels[pet.gender]}
+                {genderLabels[pet.gender?.toUpperCase()] || "未知"}
               </span>
               <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
-                {sizeLabels[pet.size]}
+                {sizeLabels[pet.size?.toUpperCase()] || "未知"}
               </span>
               {pet.traits?.slice(0, 2).map((trait, i) => (
                 <span key={i} className="text-xs px-2 py-0.5 bg-amber-50 text-amber-600 rounded">
@@ -477,15 +488,15 @@ export default function PetDetailPage() {
               <Button
                 size="sm"
                 className="h-8 text-sm bg-gradient-to-r from-orange-500 to-amber-500 px-4"
-                disabled={pet.status !== "available"}
+                disabled={!isAvailable}
                 onClick={handleAdoptClick}
               >
                 <Heart className="w-4 h-4 mr-1.5" />
-                {pet.status === "available" ? "申请领养" : "暂不可申请"}
+                {isAvailable ? "申请领养" : "暂不可申请"}
               </Button>
             </div>
             {/* 申请人数提示 */}
-            {applicationCount > 0 && pet.status === "available" && (
+            {applicationCount > 0 && isAvailable && (
               <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
                 <span className="text-xs text-gray-400">已有</span>
                 <span className="text-sm font-semibold text-orange-500">{applicationCount}</span>

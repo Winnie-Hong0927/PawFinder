@@ -23,18 +23,26 @@ interface PetCardProps {
 }
 
 const speciesLabels: Record<string, string> = {
-  dog: "狗狗",
-  cat: "猫咪",
-  rabbit: "兔子",
-  bird: "鸟类",
-  hamster: "仓鼠",
-  other: "其他",
+  DOG: "狗狗",
+  CAT: "猫咪",
+  RABBIT: "兔子",
+  BIRD: "鸟类",
+  HAMSTER: "仓鼠",
+  OTHER: "其他",
 };
 
 const genderLabels: Record<string, string> = {
-  male: "公",
-  female: "母",
-  unknown: "未知",
+  MALE: "公",
+  FEMALE: "母",
+  UNKNOWN: "未知",
+};
+
+// 后端状态枚举值（大写）
+const statusConfig: Record<string, { color: string; label: string }> = {
+  AVAILABLE: { color: "bg-emerald-500", label: "可领养" },
+  ADOPTED: { color: "bg-gray-500", label: "已领养" },
+  UNAVAILABLE: { color: "bg-amber-500", label: "暂不可领养" },
+  PENDING: { color: "bg-amber-500", label: "待审核" },
 };
 
 export function PetCard({
@@ -51,12 +59,12 @@ export function PetCard({
   className,
 }: PetCardProps) {
   const primaryImage = images?.[0] || "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400";
-  const statusColor = 
-    status === "available" ? "bg-emerald-500" : 
-    status === "pending" ? "bg-amber-500" : "bg-gray-500";
-  const statusLabel = 
-    status === "available" ? "可领养" : 
-    status === "pending" ? "待审核" : "已领养";
+  
+  // 使用大写状态值匹配，兼容大小写
+  const upperStatus = status?.toUpperCase() || "";
+  const statusInfo = statusConfig[upperStatus] || statusConfig.UNAVAILABLE;
+  const statusColor = statusInfo.color;
+  const statusLabel = statusInfo.label;
 
   return (
     <Link href={`/pets/${id}`} className="block group">
@@ -99,7 +107,7 @@ export function PetCard({
           <div className="flex items-center justify-between mb-1.5">
             <h3 className="font-bold text-sm text-gray-800 group-hover:text-orange-600 transition-colors truncate mr-2">{name}</h3>
             <Badge variant="secondary" className="bg-orange-50 text-orange-700 text-[10px] px-1.5 py-0 flex-shrink-0">
-              {speciesLabels[species] || species}
+              {speciesLabels[species?.toUpperCase()] || species}
             </Badge>
           </div>
 
@@ -107,7 +115,7 @@ export function PetCard({
           <div className="flex items-center gap-1.5 text-[11px] text-gray-500 mb-2">
             <span className="truncate">{breed || "混血"}</span>
             <span className="text-gray-300">|</span>
-            <span>{genderLabels[gender] || "未知"}</span>
+            <span>{genderLabels[gender?.toUpperCase()] || "未知"}</span>
             <span className="text-gray-300">|</span>
             <span className="truncate">{age || "未知"}</span>
           </div>

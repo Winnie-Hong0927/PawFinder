@@ -15,6 +15,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Building2, UserCog, PawPrint, Heart, Plus, CheckCircle, XCircle, Eye, Edit, Trash2, Upload, X, MapPin } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
+// 后端状态枚举值（大写）
+const statusConfig: Record<string, { color: string; label: string }> = {
+  AVAILABLE: { color: "bg-emerald-500", label: "可领养" },
+  ADOPTED: { color: "bg-gray-500", label: "已领养" },
+  UNAVAILABLE: { color: "bg-amber-500", label: "暂不可领养" },
+  PENDING: { color: "bg-amber-500", label: "待审核" },
+};
+
+const getStatusInfo = (status: string) => {
+  const upperStatus = status?.toUpperCase() || "";
+  return statusConfig[upperStatus] || statusConfig.UNAVAILABLE;
+};
+
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -916,7 +929,7 @@ export default function AdminPage() {
                         </TableCell>
                         {isSysAdmin && <TableCell><Badge variant="outline">{pet.institution_name || pet.shelter_location || "-"}</Badge></TableCell>}
                         <TableCell>
-                          <Badge className={pet.status === "available" ? "bg-emerald-500" : pet.status === "pending" ? "bg-amber-500" : "bg-gray-500"}>
+                          <Badge className={getStatusInfo(pet.status).color}>
                             {getStatusText(pet.status)}
                           </Badge>
                         </TableCell>
@@ -1172,7 +1185,7 @@ export default function AdminPage() {
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <Badge className={previewPet.status === "available" ? "bg-emerald-500" : previewPet.status === "pending" ? "bg-amber-500" : "bg-gray-500"}>
+                <Badge className={getStatusInfo(previewPet.status).color}>
                   {getStatusText(previewPet.status)}
                 </Badge>
               </div>
